@@ -1,9 +1,16 @@
 3.0
+ * Add WriteFailureException to native protocol, notify coordinator of
+   write failures (CASSANDRA-8592)
+ * Convert SequentialWriter to nio (CASSANDRA-8709)
+ * Add role based access control (CASSANDRA-7653, 8650, 7216, 8760, 8849, 8761, 8850)
+ * Record client ip address in tracing sessions (CASSANDRA-8162)
+ * Indicate partition key columns in response metadata for prepared
+   statements (CASSANDRA-7660)
+ * Merge UUIDType and TimeUUIDType parse logic (CASSANDRA-8759)
  * Avoid memory allocation when searching index summary (CASSANDRA-8793)
  * Optimise (Time)?UUIDType Comparisons (CASSANDRA-8730)
  * Make CRC32Ex into a separate maven dependency (CASSANDRA-8836)
  * Use preloaded jemalloc w/ Unsafe (CASSANDRA-8714)
- * Add role based access control (CASSANDRA-7653, 8650, 7216, 8760, 8849, 8761)
  * Avoid accessing partitioner through StorageProxy (CASSANDRA-8244, 8268)
  * Upgrade Metrics library and remove depricated metrics (CASSANDRA-5657)
  * Serializing Row cache alternative, fully off heap (CASSANDRA-7438)
@@ -61,8 +68,12 @@
  * Improve concurrency of repair (CASSANDRA-6455, 8208)
  * Select optimal CRC32 implementation at runtime (CASSANDRA-8614)
  * Evaluate MurmurHash of Token once per query (CASSANDRA-7096)
+ * Generalize progress reporting (CASSANDRA-8901)
 
 2.1.4
+ * Fix SSTableRewriter with disabled early open (CASSANDRA-8535)
+ * Fix cassandra-stress so it respects the CL passed in user mode (CASSANDRA-8948)
+ * Fix rare NPE in ColumnDefinition#hasIndexOption() (CASSANDRA-8786)
  * cassandra-stress reports per-operation statistics, plus misc (CASSANDRA-8769)
  * Add SimpleDate (cql date) and Time (cql time) types (CASSANDRA-7523)
  * Use long for key count in cfstats (CASSANDRA-8913)
@@ -101,6 +112,8 @@
  * Add nodetool statushandoff/statusbackup (CASSANDRA-8912)
 Merged from 2.0:
 2.0.14:
+ * Fix duplicate up/down messages sent to native clients (CASSANDRA-7816)
+ * Expose commit log archive status via JMX (CASSANDRA-8734)
  * Provide better exceptions for invalid replication strategy parameters
    (CASSANDRA-8909)
  * Fix regression in mixed single and multi-column relation support for
