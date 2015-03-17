@@ -753,7 +753,42 @@ class TestCqlshOutput(BaseTestCase):
 
     def test_help_types(self):
         with testrun_cqlsh(tty=True) as c:
-            c.cmd_and_response('help types')
+            response = c.cmd_and_response('help types').replace('\r\n', '\n').strip()
+            expected = '''CQL types recognized by this version of cqlsh:
+
+          varint
+          timeuuid
+          float
+          varchar
+          time
+          timestamp
+          int
+          double
+          decimal
+          counter
+          bigint
+          boolean
+          blob
+          text
+          date
+          ascii
+          inet
+          uuid
+
+        For information on the various recognizable input formats for these
+        types, or on controlling the formatting of cqlsh query output, see
+        one of the following topics:
+
+          HELP TIMESTAMP_INPUT
+          HELP DATE_INPUT
+          HELP TIME_INPUT
+          HELP BLOB_INPUT
+          HELP UUID_INPUT
+          HELP BOOLEAN_INPUT
+
+          HELP TEXT_OUTPUT
+          HELP TIMESTAMP_OUTPUT'''
+        self.assertMultiLineEqual(response, expected)
 
     def test_help(self):
         pass

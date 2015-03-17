@@ -1,0 +1,1 @@
+/home/mambocab/cstar_src/cassandra/bin/cqlsh
