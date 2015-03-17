@@ -82,6 +82,7 @@ class CqlshCompletionCase(BaseTestCase):
             self.assertEqual(set(choices), choicesseen)
 
     def trycompletions(self, inputstring, immediate='', choices=(), other_choices_ok=False):
+        # TODO: decouple generation from assertion
         try:
             self._trycompletions_inner(inputstring, immediate, choices, other_choices_ok)
         finally:
@@ -108,13 +109,32 @@ class TestCqlshCompletion(CqlshCompletionCase):
         self.trycompletions('exit', ' ')
 
     def test_complete_in_uuid(self):
-        pass
+        self.trycompletions('INSERT INTO has_all_types (uuidcol) VALUES (',
+                            choices=('<value for uuidcol (uuid)>',))
 
     def test_complete_in_select(self):
-        pass
+        self.trycompletions('SELECT ',
+                            choices=('COUNT', '<colname>', 'DISTINCT', '*',
+                                     'TOKEN', 'WRITETIME', '<identifier>',
+                                     'TTL'))
 
     def test_complete_in_insert(self):
-        pass
+        self.trycompletions('INSERT INTO  ',
+                            choices=('twenty_rows_table',
+                                     'ascii_with_special_chars',
+                                     'users',
+                                     'has_all_types',
+                                     'system.',
+                                     'system_auth.',
+                                     'empty_composite_table',
+                                     'empty_table',
+                                     'undefined_values_table',
+                                     'dynamic_columns',
+                                     'twenty_rows_composite_table',
+                                     'utf8_with_special_chars',
+                                     'system_traces.',
+                                     'songs'),
+                            other_choices_ok=True)
 
     def test_complete_in_update(self):
         pass
@@ -147,7 +167,7 @@ class TestCqlshCompletion(CqlshCompletionCase):
                                "{ 'class' : 'SimpleStrategy'", ", 'replication_factor': ")
         self.trycompletions("create   keyspace ttl with replication ="
                                "{'class':'SimpleStrategy',", " 'replication_factor': ")
-        self.trycompletions("create keyspace \"ttl\" with replication ="
+        self.trycompletions('create keyspace "ttl" with replication ='
                                "{'class': 'SimpleStrategy', ", "'replication_factor': ")
         self.trycompletions("create keyspace \"ttl\" with replication ="
                                "{'class': 'SimpleStrategy', 'repl", "ication_factor'")
@@ -184,7 +204,8 @@ class TestCqlshCompletion(CqlshCompletionCase):
                             "pleStrategy'")
 
     def test_complete_in_drop_keyspace(self):
-        pass
+        self.trycompletions('DROP KEYSPACE ',
+                            choices=(('IF',)), other_choices_ok=True)
 
     def test_complete_in_create_columnfamily(self):
         pass

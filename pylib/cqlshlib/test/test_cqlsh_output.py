@@ -752,43 +752,44 @@ class TestCqlshOutput(BaseTestCase):
                 self.assertIn(type(cm.exception), (EOFError, OSError))
 
     def test_help_types(self):
-        with testrun_cqlsh(tty=True) as c:
-            response = c.cmd_and_response('help types').replace('\r\n', '\n').strip()
-            expected = '''CQL types recognized by this version of cqlsh:
-
-          varint
-          timeuuid
-          float
-          varchar
-          time
-          timestamp
-          int
-          double
-          decimal
-          counter
-          bigint
-          boolean
-          blob
-          text
-          date
-          ascii
-          inet
-          uuid
-
-        For information on the various recognizable input formats for these
-        types, or on controlling the formatting of cqlsh query output, see
-        one of the following topics:
-
-          HELP TIMESTAMP_INPUT
-          HELP DATE_INPUT
-          HELP TIME_INPUT
-          HELP BLOB_INPUT
-          HELP UUID_INPUT
-          HELP BOOLEAN_INPUT
-
-          HELP TEXT_OUTPUT
-          HELP TIMESTAMP_OUTPUT'''
-        self.assertMultiLineEqual(response, expected)
+        for terminator in ('', ';'):
+            with testrun_cqlsh(tty=True) as c:
+                response = c.cmd_and_response('help types').replace('\r\n', '\n').strip()
+                expected = ('CQL types recognized by this version of cqlsh:\n'
+                            '\n'
+                            '  varint\n'
+                            '  timeuuid\n'
+                            '  float\n'
+                            '  varchar\n'
+                            '  time\n'
+                            '  timestamp\n'
+                            '  int\n'
+                            '  double\n'
+                            '  decimal\n'
+                            '  counter\n'
+                            '  bigint\n'
+                            '  boolean\n'
+                            '  blob\n'
+                            '  text\n'
+                            '  date\n'
+                            '  ascii\n'
+                            '  inet\n'
+                            '  uuid\n'
+                            '\n'
+                            'For information on the various recognizable input formats for these\n'
+                            'types, or on controlling the formatting of cqlsh query output, see\n'
+                            'one of the following topics:\n'
+                            '\n'
+                            'HELP TIMESTAMP_INPUT\n'
+                            'HELP DATE_INPUT\n'
+                            'HELP TIME_INPUT\n'
+                            'HELP BLOB_INPUT\n'
+                            'HELP UUID_INPUT\n'
+                            'HELP BOOLEAN_INPUT\n'
+                            '\n'
+                            'HELP TEXT_OUTPUT\n'
+                            'HELP TIMESTAMP_OUTPUT\n')
+                self.assertMultiLineEqual(response, expected)
 
     def test_help(self):
         pass
