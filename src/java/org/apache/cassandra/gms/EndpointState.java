@@ -47,14 +47,12 @@ public class EndpointState
     /* fields below do not get serialized */
     private volatile long updateTimestamp;
     private volatile boolean isAlive;
-    private volatile boolean hasPendingEcho;
 
     EndpointState(HeartBeatState initialHbState)
     {
         hbState = initialHbState;
         updateTimestamp = System.nanoTime();
         isAlive = true;
-        hasPendingEcho = false;
     }
 
     HeartBeatState getHeartBeatState()
@@ -116,14 +114,21 @@ public class EndpointState
         isAlive = false;
     }
 
-    public boolean hasPendingEcho()
+    public boolean isRpcReady()
     {
-        return hasPendingEcho;
+        VersionedValue rpcState = getApplicationState(ApplicationState.RPC_READY);
+        return rpcState != null && Boolean.parseBoolean(rpcState.value);
     }
 
-    public void markPendingEcho(boolean val)
+    public String getStatus()
     {
-        hasPendingEcho = val;
+        VersionedValue status = getApplicationState(ApplicationState.STATUS);
+        if (status == null)
+            return "";
+
+        String[] pieces = status.value.split(VersionedValue.DELIMITER_STR, -1);
+        assert (pieces.length > 0);
+        return pieces[0];
     }
 
     public String toString()

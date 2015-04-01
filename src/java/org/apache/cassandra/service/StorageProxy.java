@@ -60,7 +60,6 @@ import org.apache.cassandra.locator.TokenMetadata;
 import org.apache.cassandra.metrics.*;
 import org.apache.cassandra.net.*;
 import org.apache.cassandra.service.paxos.*;
-import org.apache.cassandra.sink.SinkManager;
 import org.apache.cassandra.tracing.Tracing;
 import org.apache.cassandra.triggers.TriggerExecutor;
 import org.apache.cassandra.utils.*;
@@ -558,7 +557,7 @@ public class StorageProxy implements StorageProxyMBean
                     writeMetrics.failures.mark();
                     WriteFailureException fe = (WriteFailureException)ex;
                     Tracing.trace("Write failure; received {} of {} required replies, failed {} requests",
-                        new Object[] {fe.received, fe.blockFor, fe.failures});
+                                  fe.received, fe.blockFor, fe.failures);
                 }
                 else
                 {
@@ -1054,19 +1053,15 @@ public class StorageProxy implements StorageProxyMBean
         {
             public void runMayThrow()
             {
-                IMutation processed = SinkManager.processWriteRequest(mutation);
-                if (processed != null)
+                try
                 {
-                    try 
-                    {
-                        ((Mutation) processed).apply();
-                        responseHandler.response(null);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.error("Failed to apply mutation locally : {}", ex.getMessage());
-                        responseHandler.onFailure(FBUtilities.getBroadcastAddress());
-                    }
+                    mutation.apply();
+                    responseHandler.response(null);
+                }
+                catch (Exception ex)
+                {
+                    logger.error("Failed to apply mutation locally : {}", ex.getMessage());
+                    responseHandler.onFailure(FBUtilities.getBroadcastAddress());
                 }
             }
         });
@@ -1177,18 +1172,13 @@ public class StorageProxy implements StorageProxyMBean
             @Override
             public void runMayThrow() throws OverloadedException, WriteTimeoutException
             {
-                IMutation processed = SinkManager.processWriteRequest(mutation);
-                if (processed == null)
-                    return;
+                assert mutation instanceof CounterMutation;
 
-                assert processed instanceof CounterMutation;
-                CounterMutation cm = (CounterMutation) processed;
-
-                Mutation result = cm.apply();
+                Mutation result = ((CounterMutation) mutation).apply();
                 responseHandler.response(null);
 
                 Set<InetAddress> remotes = Sets.difference(ImmutableSet.copyOf(targets),
-                            ImmutableSet.of(FBUtilities.getBroadcastAddress()));
+                                                           ImmutableSet.of(FBUtilities.getBroadcastAddress()));
                 if (!remotes.isEmpty())
                     sendToHintedEndpoints(result, remotes, responseHandler, localDataCenter);
             }
@@ -1407,7 +1397,7 @@ public class StorageProxy implements StorageProxyMBean
                     if (Tracing.isTracing())
                     {
                         Tracing.trace("{}; received {} of {} responses{}",
-                                      new Object[]{(isTimeout ? "Timed out" : "Failed"), responseCount, blockFor, gotData });
+                                      isTimeout ? "Timed out" : "Failed", responseCount, blockFor, gotData);
                     }
                     else if (logger.isDebugEnabled())
                     {
@@ -1696,7 +1686,8 @@ public class StorageProxy implements StorageProxyMBean
                                   : Math.max(1, Math.min(ranges.size(), (int) Math.ceil(command.limit() / resultRowsPerRange)));
             logger.debug("Estimated result rows per range: {}; requested rows: {}, ranges.size(): {}; concurrent range requests: {}",
                          resultRowsPerRange, command.limit(), ranges.size(), concurrencyFactor);
-            Tracing.trace("Submitting range requests on {} ranges with a concurrency of {} ({} rows per range expected)", new Object[]{ ranges.size(), concurrencyFactor, resultRowsPerRange});
+            Tracing.trace("Submitting range requests on {} ranges with a concurrency of {} ({} rows per range expected)",
+                          ranges.size(), concurrencyFactor, resultRowsPerRange);
 
             boolean haveSufficientRows = false;
             int i = 0;
@@ -1815,7 +1806,7 @@ public class StorageProxy implements StorageProxyMBean
                         if (Tracing.isTracing())
                         {
                             Tracing.trace("{}; received {} of {} responses{} for range {} of {}",
-                                          new Object[]{(isTimeout ? "Timed out" : "Failed"), responseCount, blockFor, gotData, i, ranges.size() });
+                                          (isTimeout ? "Timed out" : "Failed"), responseCount, blockFor, gotData, i, ranges.size());
                         }
                         else if (logger.isDebugEnabled())
                         {

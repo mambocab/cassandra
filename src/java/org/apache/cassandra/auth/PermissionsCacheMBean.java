@@ -15,28 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.cassandra.sink;
+package org.apache.cassandra.auth;
 
-import java.net.InetAddress;
-
-import org.apache.cassandra.net.MessageIn;
-import org.apache.cassandra.net.MessageOut;
-
-public interface IMessageSink
+public interface PermissionsCacheMBean
 {
-    /**
-     * Transform or drop an outgoing message
-     *
-     * @return null if the message is dropped, or the transformed message to send, which may be just
-     * the original message
-     */
-    MessageOut handleMessage(MessageOut message, int id, InetAddress to);
+    public void invalidate();
 
-    /**
-     * Transform or drop an incoming message
-     *
-     * @return null if the message is dropped, or the transformed message to receive, which may be just
-     * the original message
-     */
-    MessageIn handleMessage(MessageIn message, int id, InetAddress to);
+    public void setValidity(int validityPeriod);
+
+    public int getValidity();
+
+    public void setUpdateInterval(int updateInterval);
+
+    public int getUpdateInterval();
 }

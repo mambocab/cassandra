@@ -87,6 +87,7 @@ public class NodeTool
                 ClearSnapshot.class,
                 Compact.class,
                 Scrub.class,
+                Verify.class,
                 Flush.class,
                 UpgradeSSTable.class,
                 DisableAutoCompaction.class,
@@ -156,11 +157,19 @@ public class NodeTool
                 GetLoggingLevels.class
         );
 
-        Cli<Runnable> parser = Cli.<Runnable>builder("nodetool")
-                .withDescription("Manage your Cassandra cluster")
+        Cli.CliBuilder<Runnable> builder = Cli.builder("nodetool");
+
+        builder.withDescription("Manage your Cassandra cluster")
+                 .withDefaultCommand(Help.class)
+                 .withCommands(commands);
+
+        // bootstrap commands
+        builder.withGroup("bootstrap")
+                .withDescription("Monitor/manage node's bootstrap process")
                 .withDefaultCommand(Help.class)
-                .withCommands(commands)
-                .build();
+                .withCommand(BootstrapResume.class);
+
+        Cli<Runnable> parser = builder.build();
 
         int status = 0;
         try
@@ -254,7 +263,7 @@ public class NodeTool
             try (NodeProbe probe = connect())
             {
                 execute(probe);
-            } 
+            }
             catch (IOException e)
             {
                 throw new RuntimeException("Error while closing JMX connection", e);
@@ -509,20 +518,20 @@ public class NodeTool
             try
             {
                 ownerships = probe.effectiveOwnership(keyspace);
-            } 
+            }
             catch (IllegalStateException ex)
             {
                 ownerships = probe.getOwnership();
                 errors.append("Note: " + ex.getMessage() + "%n");
                 showEffectiveOwnership = false;
-            } 
+            }
             catch (IllegalArgumentException ex)
             {
                 System.out.printf("%nError: " + ex.getMessage() + "%n");
                 return;
             }
 
-            
+
             System.out.println();
             for (Entry<String, SetHostStat> entry : getOwnershipByDc(probe, resolveIp, tokensToEndpoints, ownerships).entrySet())
                 printDc(probe, format, entry.getKey(), endpointsToTokens, entry.getValue(),showEffectiveOwnership);
@@ -672,20 +681,20 @@ public class NodeTool
                 long completed;
 
                 pending = 0;
-                for (int n : ms.getCommandPendingTasks().values())
+                for (int n : ms.getLargeMessagePendingTasks().values())
                     pending += n;
                 completed = 0;
-                for (long n : ms.getCommandCompletedTasks().values())
+                for (long n : ms.getLargeMessageCompletedTasks().values())
                     completed += n;
-                System.out.printf("%-25s%10s%10s%15s%n", "Commands", "n/a", pending, completed);
+                System.out.printf("%-25s%10s%10s%15s%n", "Large messages", "n/a", pending, completed);
 
                 pending = 0;
-                for (int n : ms.getResponsePendingTasks().values())
+                for (int n : ms.getSmallMessagePendingTasks().values())
                     pending += n;
                 completed = 0;
-                for (long n : ms.getResponseCompletedTasks().values())
+                for (long n : ms.getSmallMessageCompletedTasks().values())
                     completed += n;
-                System.out.printf("%-25s%10s%10s%15s%n", "Responses", "n/a", pending, completed);
+                System.out.printf("%-25s%10s%10s%15s%n", "Small messages", "n/a", pending, completed);
             }
         }
     }
@@ -1279,9 +1288,42 @@ public class NodeTool
                 try
                 {
                     probe.scrub(System.out, disableSnapshot, skipCorrupted, keyspace, cfnames);
+                } catch (IllegalArgumentException e)
+                {
+                    throw e;
                 } catch (Exception e)
                 {
-                    throw new RuntimeException("Error occurred during flushing", e);
+                    throw new RuntimeException("Error occurred during scrubbing", e);
+                }
+            }
+        }
+    }
+
+    @Command(name = "verify", description = "Verify (check data checksum for) one or more tables")
+    public static class Verify extends NodeToolCmd
+    {
+        @Arguments(usage = "[<keyspace> <tables>...]", description = "The keyspace followed by one or many tables")
+        private List<String> args = new ArrayList<>();
+
+        @Option(title = "extended_verify",
+            name = {"-e", "--extended-verify"},
+            description = "Verify each cell data, beyond simply checking sstable checksums")
+        private boolean extendedVerify = false;
+
+        @Override
+        public void execute(NodeProbe probe)
+        {
+            List<String> keyspaces = parseOptionalKeyspace(args, probe);
+            String[] cfnames = parseOptionalColumnFamilies(args);
+
+            for (String keyspace : keyspaces)
+            {
+                try
+                {
+                    probe.verify(System.out, extendedVerify, keyspace, cfnames);
+                } catch (Exception e)
+                {
+                    throw new RuntimeException("Error occurred during verifying", e);
                 }
             }
         }
@@ -2122,12 +2164,11 @@ public class NodeTool
         @Option(title = "resolve_ip", name = {"-r", "--resolve-ip"}, description = "Show node domain names instead of IPs")
         private boolean resolveIp = false;
 
-        private boolean hasEffectiveOwns = false;
         private boolean isTokenPerNode = true;
         private int maxAddressLength = 0;
         private String format = null;
         private Collection<String> joiningNodes, leavingNodes, movingNodes, liveNodes, unreachableNodes;
-        private Map<String, String> loadMap, hostIDMap, tokensToEndpoints;
+        private Map<String, String> loadMap, hostIDMap;
         private EndpointSnitchInfoMBean epSnitchInfo;
 
         @Override
@@ -2137,15 +2178,16 @@ public class NodeTool
             leavingNodes = probe.getLeavingNodes();
             movingNodes = probe.getMovingNodes();
             loadMap = probe.getLoadMap();
-            tokensToEndpoints = probe.getTokenToEndpointMap();
+            Map<String, String> tokensToEndpoints = probe.getTokenToEndpointMap();
             liveNodes = probe.getLiveNodes();
             unreachableNodes = probe.getUnreachableNodes();
             hostIDMap = probe.getHostIdMap();
             epSnitchInfo = probe.getEndpointSnitchInfoProxy();
-            
+
             StringBuffer errors = new StringBuffer();
 
             Map<InetAddress, Float> ownerships = null;
+            boolean hasEffectiveOwns = false;
             try
             {
                 ownerships = probe.effectiveOwnership(keyspace);
@@ -2195,9 +2237,9 @@ public class NodeTool
                     printNode(endpoint.getHostAddress(), owns, tokens, hasEffectiveOwns, isTokenPerNode);
                 }
             }
-            
+
             System.out.printf("%n" + errors.toString());
-            
+
         }
 
         private void findMaxAddressLength(Map<String, SetHostStat> dcs)
@@ -2283,7 +2325,7 @@ public class NodeTool
         }
     }
 
-    private static Map<String, SetHostStat> getOwnershipByDc(NodeProbe probe, boolean resolveIp, 
+    private static Map<String, SetHostStat> getOwnershipByDc(NodeProbe probe, boolean resolveIp,
                                                              Map<String, String> tokenToEndpoint,
                                                              Map<InetAddress, Float> ownerships)
     {
@@ -2424,7 +2466,7 @@ public class NodeTool
     @Command(name = "stop", description = "Stop compaction")
     public static class Stop extends NodeToolCmd
     {
-        @Arguments(title = "compaction_type", usage = "<compaction type>", description = "Supported types are COMPACTION, VALIDATION, CLEANUP, SCRUB, INDEX_BUILD", required = true)
+        @Arguments(title = "compaction_type", usage = "<compaction type>", description = "Supported types are COMPACTION, VALIDATION, CLEANUP, SCRUB, VERIFY, INDEX_BUILD", required = true)
         private OperationType compactionType = OperationType.UNKNOWN;
 
         @Override
@@ -2648,8 +2690,8 @@ public class NodeTool
             double[] stats = probe.getAndResetGCStats();
             double mean = stats[2] / stats[5];
             double stdev = Math.sqrt((stats[3] / stats[5]) - (mean * mean));
-            System.out.printf("%20s%20s%20s%20s%20s%20s%n", "Interval (ms)", "Max GC Elapsed (ms)", "Total GC Elapsed (ms)", "Stdev GC Elapsed (ms)", "GC Reclaimed (MB)", "Collections");
-            System.out.printf("%20.0f%20.0f%20.0f%20.0f%20.0f%20.0f%n", stats[0], stats[1], stats[2], stdev, stats[4], stats[5]);
+            System.out.printf("%20s%20s%20s%20s%20s%20s%25s%n", "Interval (ms)", "Max GC Elapsed (ms)", "Total GC Elapsed (ms)", "Stdev GC Elapsed (ms)", "GC Reclaimed (MB)", "Collections", "Direct Memory Bytes");
+            System.out.printf("%20.0f%20.0f%20.0f%20.0f%20.0f%20.0f%25d%n", stats[0], stats[1], stats[2], stdev, stats[4], stats[5], (long)stats[6]);
         }
     }
 
@@ -2668,7 +2710,7 @@ public class NodeTool
                 probe.truncateHints(endpoint);
         }
     }
-    
+
     @Command(name = "setlogginglevel", description = "Set the log level threshold for a given class. If both class and level are empty/null, it will reset to the initial configuration")
     public static class SetLoggingLevel extends NodeToolCmd
     {
@@ -2683,7 +2725,7 @@ public class NodeTool
             probe.setLoggingLevel(classQualifier, level);
         }
     }
-    
+
     @Command(name = "getlogginglevels", description = "Get the runtime logging levels")
     public static class GetLoggingLevels extends NodeToolCmd
     {
@@ -2697,4 +2739,20 @@ public class NodeTool
         }
     }
 
+    @Command(name = "resume", description = "Resume bootstrap streaming")
+    public static class BootstrapResume extends NodeToolCmd
+    {
+        @Override
+        protected void execute(NodeProbe probe)
+        {
+            try
+            {
+                probe.resumeBootstrap(System.out);
+            }
+            catch (IOException e)
+            {
+                throw new IOError(e);
+            }
+        }
+    }
 }

@@ -73,13 +73,30 @@ public abstract class CQLTester
     private static final AtomicInteger seqNumber = new AtomicInteger();
 
     private static org.apache.cassandra.transport.Server server;
-    private static final int nativePort;
-    private static final InetAddress nativeAddr;
-    private static final Cluster cluster[] = new Cluster[Server.CURRENT_VERSION];
-    private static final Session session[] = new Session[Server.CURRENT_VERSION];
+    protected static final int nativePort;
+    protected static final InetAddress nativeAddr;
+    private static final Cluster[] cluster;
+    private static final Session[] session;
 
-    static
-    {
+    static int maxProtocolVersion;
+    static {
+        int version;
+        for (version = 1; version <= Server.CURRENT_VERSION; version++)
+        {
+            try
+            {
+                ProtocolVersion.fromInt(version);
+            }
+            catch (IllegalArgumentException e)
+            {
+                version--;
+                break;
+            }
+        }
+        maxProtocolVersion = version;
+        cluster = new Cluster[maxProtocolVersion];
+        session = new Session[maxProtocolVersion];
+
         // Once per-JVM is enough
         SchemaLoader.prepareServer();
 
@@ -198,7 +215,7 @@ public abstract class CQLTester
     }
 
     // lazy initialization for all tests that require Java Driver
-    private static void requireNetwork() throws ConfigurationException
+    protected static void requireNetwork() throws ConfigurationException
     {
         if (server != null)
             return;
@@ -210,7 +227,7 @@ public abstract class CQLTester
         server = new org.apache.cassandra.transport.Server(nativeAddr, nativePort);
         server.start();
 
-        for (int version = 1; version <= Server.CURRENT_VERSION; version++)
+        for (int version = 1; version <= maxProtocolVersion; version++)
         {
             if (cluster[version-1] != null)
                 continue;
@@ -352,13 +369,14 @@ public abstract class CQLTester
         schemaChange(fullQuery);
     }
 
-    protected void createTable(String query)
+    protected String createTable(String query)
     {
         String currentTable = "table_" + seqNumber.getAndIncrement();
         tables.add(currentTable);
         String fullQuery = formatQuery(query);
         logger.info(fullQuery);
         schemaChange(fullQuery);
+        return currentTable;
     }
 
     protected void createTableMayThrow(String query) throws Throwable
@@ -456,6 +474,13 @@ public abstract class CQLTester
         requireNetwork();
 
         return session[protocolVersion-1].execute(formatQuery(query), values);
+    }
+
+    protected Session sessionNet(int protocolVersion)
+    {
+        requireNetwork();
+
+        return session[protocolVersion-1];
     }
 
     private String formatQuery(String query)
