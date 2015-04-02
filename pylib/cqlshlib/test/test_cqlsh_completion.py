@@ -48,7 +48,7 @@ class CqlshCompletionCase(BaseTestCase):
     def tearDown(self):
         self.cqlsh_runner.__exit__(None, None, None)
 
-    def get_completions(self, inputstring):
+    def get_completions(self, inputstring, split_completed_lines=True):
         self.cqlsh.send(inputstring)
         self.cqlsh.send(TAB)
         immediate = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
@@ -59,8 +59,15 @@ class CqlshCompletionCase(BaseTestCase):
 
         self.cqlsh.send(TAB)
         choice_output = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
+        if choice_output == BEL or not choice_output:
+            return Completions(immediate, [])
 
-        return Completions(immediate, choice_output)
+        choice_lines = choice_output.splitlines()
+        if choice_lines:
+            self.assertRegexpMatches(choice_lines[-1],
+                                     self.cqlsh.prompt.lstrip() + re.escape(inputstring))
+
+        return Completions(immediate, choice_lines)
 
     def _trycompletions_inner(self, inputstring, immediate='', choices=(), other_choices_ok=False):
         """
@@ -72,19 +79,17 @@ class CqlshCompletionCase(BaseTestCase):
         is simulated in order to get a list of choices, which are expected to
         match the items in 'choices' (order is not important, but case is).
         """
-        completed_immediate, choice_output = self.get_completions(inputstring)
+        completed_immediate, choice_lines = self.get_completions(inputstring)
         self.assertEqual(completed_immediate, immediate, 'cqlsh completed %r, but we expected %r'
                                                % (completed_immediate, immediate))
         if immediate:
             return
 
-        if choice_output == BEL:
-            lines = ()
-        else:
-            lines = choice_output.splitlines()
-            self.assertRegexpMatches(lines[-1], self.cqlsh.prompt.lstrip() + re.escape(inputstring))
+        if choice_lines:
+            self.assertRegexpMatches(choice_lines[-1],
+                                     self.cqlsh.prompt.lstrip() + re.escape(inputstring))
         choicesseen = set()
-        for line in lines[:-1]:
+        for line in choice_lines[:-1]:
             choicesseen.update(completion_separation_re.split(line.strip()))
         choicesseen.discard('')
         if other_choices_ok:
