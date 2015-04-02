@@ -20,6 +20,7 @@
 from __future__ import with_statement
 
 import re
+from collections import namedtuple
 from .basecase import BaseTestCase, cqlsh
 from .cassconnect import testrun_cqlsh
 
@@ -35,6 +36,10 @@ COMPLETION_RESPONSE_TIME = 0.5
 
 completion_separation_re = re.compile(r'\s+')
 
+
+Completions = namedtuple('Completions', 'immediate choices')
+
+
 class CqlshCompletionCase(BaseTestCase):
     def setUp(self):
         self.cqlsh_runner = testrun_cqlsh(cqlver=cqlsh.DEFAULT_CQLVER, env={'COLUMNS': '100000'})
@@ -42,6 +47,20 @@ class CqlshCompletionCase(BaseTestCase):
 
     def tearDown(self):
         self.cqlsh_runner.__exit__(None, None, None)
+
+    def get_completions(self, inputstring):
+        self.cqlsh.send(inputstring)
+        self.cqlsh.send(TAB)
+        immediate = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
+        immediate = immediate.replace(' \b', '')
+        self.assertEqual(immediate[:len(inputstring)], inputstring)
+        immediate = immediate[len(inputstring):]
+        immediate = immediate.replace(BEL, '')
+
+        self.cqlsh.send(TAB)
+        choice_output = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
+
+        return Completions(immediate, choice_output)
 
     def _trycompletions_inner(self, inputstring, immediate='', choices=(), other_choices_ok=False):
         """
@@ -53,20 +72,12 @@ class CqlshCompletionCase(BaseTestCase):
         is simulated in order to get a list of choices, which are expected to
         match the items in 'choices' (order is not important, but case is).
         """
-        self.cqlsh.send(inputstring)
-        self.cqlsh.send(TAB)
-        completed = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
-        completed = completed.replace(' \b', '')
-        self.assertEqual(completed[:len(inputstring)], inputstring)
-        completed = completed[len(inputstring):]
-        completed = completed.replace(BEL, '')
-        self.assertEqual(completed, immediate, 'cqlsh completed %r, but we expected %r'
-                                               % (completed, immediate))
+        completed_immediate, choice_output = self.get_completions(inputstring)
+        self.assertEqual(completed_immediate, immediate, 'cqlsh completed %r, but we expected %r'
+                                               % (completed_immediate, immediate))
         if immediate:
             return
 
-        self.cqlsh.send(TAB)
-        choice_output = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
         if choice_output == BEL:
             lines = ()
         else:
@@ -109,8 +120,7 @@ class TestCqlshCompletion(CqlshCompletionCase):
         self.trycompletions('exit', ' ')
 
     def test_complete_in_uuid(self):
-        self.trycompletions('INSERT INTO has_all_types (uuidcol) VALUES (',
-                            choices=('<value for uuidcol (uuid)>',))
+        pass
 
     def test_complete_in_select(self):
         self.trycompletions('SELECT ',
@@ -135,9 +145,25 @@ class TestCqlshCompletion(CqlshCompletionCase):
                                      'system_traces.',
                                      'songs'),
                             other_choices_ok=True)
+        self.trycompletions('INSERT INTO twenty_rows_composite_table',
+                            ' (a, b ')
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b ',
+                            choices=(')',','))
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b, ',
+                            immediate='c ')
+        # this may be undesirable behavior: why is a comma inserted?
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b, c ',
+                            choices=(',', ')'))
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b)',
+                            immediate=' VALUES ( ')
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b, c)',
+                            immediate=' VALUES ( ')
+        _, results = self.get_completions('INSERT INTO twenty_rows_composite_table (a, b, c) VALUES (')
+        self.assertEqual(results,'<value for a (text)')
+
 
     def test_complete_in_update(self):
-        pass
+        self
 
     def test_complete_in_delete(self):
         pass
