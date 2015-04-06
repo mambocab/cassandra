@@ -303,7 +303,66 @@ class TestCqlshCompletion(CqlshCompletionCase):
 
 
     def test_complete_in_update(self):
-        pass
+        self.trycompletions("UPD", immediate="ATE ")
+        self.trycompletions("UPDATE ",
+                            choices=['twenty_rows_table', 'system_auth.',
+                                     'users', 'has_all_types', 'system.',
+                                     'ascii_with_special_chars',
+                                     'empty_composite_table', 'empty_table',
+                                     'undefined_values_table',
+                                     'dynamic_columns',
+                                     'twenty_rows_composite_table',
+                                     'utf8_with_special_chars', 'ks.',
+                                     'system_traces.', 'songs'],
+                            other_choices_ok=True)
+
+        self.trycompletions("UPDATE empty_table ", choices=['USING', 'SET'])
+
+        self.trycompletions("UPDATE empty_table S",
+                            immediate='ET lonelycol = ')
+        self.trycompletions("UPDATE empty_table SET lon",
+                            immediate='elycol = ')
+        self.trycompletions("UPDATE empty_table SET lonelycol",
+                            immediate=' = ')
+
+        self.trycompletions("UPDATE empty_table U", immediate='SING T')
+        self.trycompletions("UPDATE empty_table USING T",
+                            choices=["TTL", "TIMESTAMP"])
+
+        self.trycompletions("UPDATE empty_table SET lonelycol = ",
+                            choices=['<term (text)>'],
+                            split_completed_lines=False)
+
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eg",
+                            choices=['<term (text)>'],
+                            split_completed_lines=False)
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs'",
+                            choices=[',', 'WHERE'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE ",
+                            choices=['TOKEN(', '<identifier>', '<quotedName>'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE ",
+                            choices=['TOKEN(', '<identifier>', '<quotedName>'])
+
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE lonel",
+                            choices=['<quotedName>', '<identifier>'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE lonelykey ",
+                            choices=['=', '<=', '>=', '>', '<', 'CONTAINS', 'IN', '['])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE lonelykey = 0.0 ",
+                            choices=['AND', 'IF', ';'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE lonelykey = 0.0 AND ",
+                            choices=['TOKEN(', '<identifier>', '<quotedName>'])
+
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE TOKEN(lonelykey ",
+                            choices=[',', ')'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE TOKEN(lonelykey) ",
+                            choices=['=', '<=', '>=', '<', '>'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE TOKEN(lonelykey) <= TOKEN(13) ",
+                            choices=[';', 'AND', 'IF'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE TOKEN(lonelykey) <= TOKEN(13) IF ",
+                            choices=['EXISTS', '<quotedName>', '<identifier>'])
+
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE TOKEN(lonelykey) <= TOKEN(13) IF EXISTS ",
+                            choices=['>=', '!=', '<=', 'IN', '[', ';', '=', '<', '>'])
 
     def test_complete_in_delete(self):
         pass
