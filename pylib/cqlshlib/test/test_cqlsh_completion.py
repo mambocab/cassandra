@@ -156,7 +156,151 @@ class TestCqlshCompletion(CqlshCompletionCase):
         pass
 
     def test_complete_in_insert(self):
-        pass
+        self.trycompletions('INSERT INTO  ',
+                            choices=('twenty_rows_table',
+                                     'ascii_with_special_chars',
+                                     'users',
+                                     'has_all_types',
+                                     'system.',
+                                     'system_auth.',
+                                     'empty_composite_table',
+                                     'empty_table',
+                                     'undefined_values_table',
+                                     'dynamic_columns',
+                                     'twenty_rows_composite_table',
+                                     'utf8_with_special_chars',
+                                     'system_traces.',
+                                     'songs'),
+                            other_choices_ok=True)
+        self.trycompletions('INSERT INTO twenty_rows_composite_table',
+                            immediate=' ')
+        self.trycompletions('INSERT INTO twenty_rows_composite_table ',
+                            choices=['(', 'JSON'])
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b ',
+                            choices=(')', ','))
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b, ',
+                            immediate='c ')
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b, c ',
+                            choices=(',', ')'))
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b)',
+                            immediate=' VALUES ( ')
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b, c) VAL',
+                            immediate='UES ( ')
+
+        self.trycompletions(
+            'INSERT INTO twenty_rows_composite_table (a, b, c) VALUES (',
+            ['<value for a (text)>'],
+            split_completed_lines=False)
+
+        self.trycompletions(
+            "INSERT INTO twenty_rows_composite_table (a, b, c) VALUES ('",
+            ['<value for a (text)>'],
+            split_completed_lines=False)
+
+        self.trycompletions(
+            "INSERT INTO twenty_rows_composite_table (a, b, c) VALUES ( 'eggs",
+            ['<value for a (text)>'],
+            split_completed_lines=False)
+
+        self.trycompletions(
+            "INSERT INTO twenty_rows_composite_table (a, b, c) VALUES ('eggs'",
+            immediate=', ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs',"),
+            ['<value for b (text)>'],
+            split_completed_lines=False)
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam')"),
+            immediate=' ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') "),
+            choices=[';', 'USING', 'IF'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam');"),
+            choices=['?', 'ALTER', 'BEGIN', 'CAPTURE', 'CONSISTENCY', 'COPY',
+                     'CREATE', 'DEBUG', 'DELETE', 'DESC', 'DESCRIBE', 'DROP',
+                     'EXPAND', 'GRANT', 'HELP', 'INSERT', 'LIST', 'PAGING',
+                     'REVOKE', 'SELECT', 'SHOW', 'SOURCE', 'TRACING',
+                     'TRUNCATE', 'UPDATE', 'USE', 'exit', 'quit'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') US"),
+            immediate='ING T')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING"),
+            immediate=' T')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING T"),
+            choices=['TTL', 'TIMESTAMP'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TT"),
+            immediate='L ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TI"),
+            immediate='MESTAMP ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TIMESTAMP "),
+            choices=['<wholenumber>'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL "),
+            choices=['<wholenumber>'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TIMESTAMP 0 "),
+            choices=['AND', ';'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL 0 "),
+            choices=['AND', ';'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TIMESTAMP 0 A"),
+            immediate='ND TTL ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL 0 A"),
+            immediate='ND TIMESTAMP ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL 0 AND TIMESTAMP "),
+            choices=['<wholenumber>'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL 0 AND TIMESTAMP 0 "),
+            choices=['AND', ';'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL 0 AND TIMESTAMP 0 AND "),
+            choices=[])
+
 
     def test_complete_in_update(self):
         pass
