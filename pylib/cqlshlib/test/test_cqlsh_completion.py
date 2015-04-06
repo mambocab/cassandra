@@ -43,7 +43,61 @@ class CqlshCompletionCase(BaseTestCase):
     def tearDown(self):
         self.cqlsh_runner.__exit__(None, None, None)
 
-    def _trycompletions_inner(self, inputstring, immediate='', choices=(), other_choices_ok=False):
+    def _get_completions(self, inputstring, split_completed_lines=True):
+        """
+        Get results of tab completion in cqlsh. Returns a bare string if a
+        string completes immediately. Otherwise, returns a set of all
+        whitespace-separated tokens in the offered completions by default, or a
+        list of the lines in the offered completions if split_completed_lines is
+        False.
+        """
+        self.cqlsh.send(inputstring)
+        self.cqlsh.send(TAB)
+        immediate = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
+        immediate = immediate.replace(' \b', '')
+        self.assertEqual(immediate[:len(inputstring)], inputstring)
+        immediate = immediate[len(inputstring):]
+        immediate = immediate.replace(BEL, '')
+
+        if immediate:
+            return immediate
+
+        self.cqlsh.send(TAB)
+        choice_output = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
+        if choice_output == BEL:
+            choice_output = ''
+
+        self.cqlsh.send(CTRL_C) # cancel any current line
+        self.cqlsh.read_to_next_prompt()
+
+        choice_lines = choice_output.splitlines()
+        if choice_lines:
+            # ensure the last line of the completion is the prompt
+            prompt_regex = self.cqlsh.prompt.lstrip() + re.escape(inputstring)
+            msg = ('Double-tab completion '
+                   'does not print prompt for input "{}"'.format(inputstring))
+            self.assertRegexpMatches(choice_lines[-1], prompt_regex, msg=msg)
+
+        choice_lines = [line.strip() for line in choice_lines[:-1]]
+        choice_lines = [line for line in choice_lines if line]
+
+        if split_completed_lines:
+            completed_lines = map(set, (completion_separation_re.split(line.strip())
+                               for line in choice_lines))
+
+            if not completed_lines:
+                return set()
+
+            completed_tokens = set.union(*completed_lines)
+            return completed_tokens - {''}
+        else:
+            return choice_lines
+
+        assert False
+
+    def _trycompletions_inner(self, inputstring, immediate='', choices=(),
+                              other_choices_ok=False,
+                              split_completed_lines=True):
         """
         Test tab completion in cqlsh. Enters in the text in inputstring, then
         simulates a tab keypress to see what is immediately completed (this
@@ -53,37 +107,25 @@ class CqlshCompletionCase(BaseTestCase):
         is simulated in order to get a list of choices, which are expected to
         match the items in 'choices' (order is not important, but case is).
         """
-        self.cqlsh.send(inputstring)
-        self.cqlsh.send(TAB)
-        completed = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
-        completed = completed.replace(' \b', '')
-        self.assertEqual(completed[:len(inputstring)], inputstring)
-        completed = completed[len(inputstring):]
-        completed = completed.replace(BEL, '')
-        self.assertEqual(completed, immediate, 'cqlsh completed %r, but we expected %r'
-                                               % (completed, immediate))
+        completed = self._get_completions(inputstring,
+                                         split_completed_lines=split_completed_lines)
+
         if immediate:
+            msg = 'cqlsh completed %r, but we expected %r' % (completed, immediate)
+            self.assertEqual(completed, immediate, msg=msg)
             return
 
-        self.cqlsh.send(TAB)
-        choice_output = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
-        if choice_output == BEL:
-            lines = ()
-        else:
-            lines = choice_output.splitlines()
-            self.assertRegexpMatches(lines[-1], self.cqlsh.prompt.lstrip() + re.escape(inputstring))
-        choicesseen = set()
-        for line in lines[:-1]:
-            choicesseen.update(completion_separation_re.split(line.strip()))
-        choicesseen.discard('')
         if other_choices_ok:
-            self.assertEqual(set(choices), choicesseen.intersection(choices))
+            self.assertEqual(set(choices), completed.intersection(choices))
         else:
-            self.assertEqual(set(choices), choicesseen)
+            self.assertEqual(set(choices), set(completed))
 
-    def trycompletions(self, inputstring, immediate='', choices=(), other_choices_ok=False):
+    def trycompletions(self, inputstring, immediate='', choices=(),
+                       other_choices_ok=False, split_completed_lines=True):
         try:
-            self._trycompletions_inner(inputstring, immediate, choices, other_choices_ok)
+            self._trycompletions_inner(inputstring, immediate, choices,
+                                       other_choices_ok=other_choices_ok,
+                                       split_completed_lines=split_completed_lines)
         finally:
             self.cqlsh.send(CTRL_C) # cancel any current line
             self.cqlsh.read_to_next_prompt()
