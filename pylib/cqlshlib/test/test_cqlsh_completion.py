@@ -48,7 +48,14 @@ class CqlshCompletionCase(BaseTestCase):
     def tearDown(self):
         self.cqlsh_runner.__exit__(None, None, None)
 
-    def get_completions(self, inputstring, split_completed_lines=True):
+    def _get_completions(self, inputstring, split_completed_lines=True):
+        """
+        Get results of tab completion in cqlsh. Returns a bare string if a
+        string completes immediately. Otherwise, returns a set of all
+        whitespace-separated tokens in the offered completions by default, or a
+        list of the lines in the offered completions if split_completed_lines is
+        False.
+        """
         self.cqlsh.send(inputstring)
         self.cqlsh.send(TAB)
         immediate = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
@@ -57,19 +64,45 @@ class CqlshCompletionCase(BaseTestCase):
         immediate = immediate[len(inputstring):]
         immediate = immediate.replace(BEL, '')
 
+        if immediate:
+            return immediate
+
         self.cqlsh.send(TAB)
         choice_output = self.cqlsh.read_up_to_timeout(COMPLETION_RESPONSE_TIME)
-        if choice_output == BEL or not choice_output:
-            return Completions(immediate, [])
+        if choice_output == BEL:
+            choice_output = ''
+
+        self.cqlsh.send(CTRL_C) # cancel any current line
+        self.cqlsh.read_to_next_prompt()
 
         choice_lines = choice_output.splitlines()
         if choice_lines:
-            self.assertRegexpMatches(choice_lines[-1],
-                                     self.cqlsh.prompt.lstrip() + re.escape(inputstring))
+            # ensure the last line of the completion is the prompt
+            prompt_regex = self.cqlsh.prompt.lstrip() + re.escape(inputstring)
+            msg = ('Double-tab completion '
+                   'does not print prompt for input "{}"'.format(inputstring))
+            self.assertRegexpMatches(choice_lines[-1], prompt_regex, msg=msg)
 
-        return Completions(immediate, choice_lines)
+        choice_lines = [line.strip() for line in choice_lines[:-1]]
+        choice_lines = [line for line in choice_lines if line]
 
-    def _trycompletions_inner(self, inputstring, immediate='', choices=(), other_choices_ok=False):
+        if split_completed_lines:
+            completed_lines = map(set, (completion_separation_re.split(line.strip())
+                               for line in choice_lines))
+
+            if not completed_lines:
+                return set()
+
+            completed_tokens = set.union(*completed_lines)
+            return completed_tokens - {''}
+        else:
+            return choice_lines
+
+        assert False
+
+    def _trycompletions_inner(self, inputstring, immediate='', choices=(),
+                              other_choices_ok=False,
+                              split_completed_lines=True):
         """
         Test tab completion in cqlsh. Enters in the text in inputstring, then
         simulates a tab keypress to see what is immediately completed (this
@@ -79,28 +112,25 @@ class CqlshCompletionCase(BaseTestCase):
         is simulated in order to get a list of choices, which are expected to
         match the items in 'choices' (order is not important, but case is).
         """
-        completed_immediate, choice_lines = self.get_completions(inputstring)
-        self.assertEqual(completed_immediate, immediate, 'cqlsh completed %r, but we expected %r'
-                                               % (completed_immediate, immediate))
+        completed = self._get_completions(inputstring,
+                                         split_completed_lines=split_completed_lines)
+
         if immediate:
+            msg = 'cqlsh completed %r, but we expected %r' % (completed, immediate)
+            self.assertEqual(completed, immediate, msg=msg)
             return
 
-        if choice_lines:
-            self.assertRegexpMatches(choice_lines[-1],
-                                     self.cqlsh.prompt.lstrip() + re.escape(inputstring))
-        choicesseen = set()
-        for line in choice_lines[:-1]:
-            choicesseen.update(completion_separation_re.split(line.strip()))
-        choicesseen.discard('')
         if other_choices_ok:
-            self.assertEqual(set(choices), choicesseen.intersection(choices))
+            self.assertEqual(set(choices), completed.intersection(choices))
         else:
-            self.assertEqual(set(choices), choicesseen)
+            self.assertEqual(set(choices), set(completed))
 
-    def trycompletions(self, inputstring, immediate='', choices=(), other_choices_ok=False):
-        # TODO: decouple generation from assertion
+    def trycompletions(self, inputstring, immediate='', choices=(),
+                       other_choices_ok=False, split_completed_lines=True):
         try:
-            self._trycompletions_inner(inputstring, immediate, choices, other_choices_ok)
+            self._trycompletions_inner(inputstring, immediate, choices,
+                                       other_choices_ok=other_choices_ok,
+                                       split_completed_lines=split_completed_lines)
         finally:
             self.cqlsh.send(CTRL_C) # cancel any current line
             self.cqlsh.read_to_next_prompt()
@@ -153,7 +183,7 @@ class TestCqlshCompletion(CqlshCompletionCase):
         self.trycompletions('INSERT INTO twenty_rows_composite_table',
                             ' (a, b ')
         self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b ',
-                            choices=(')',','))
+                            choices=(')', ','))
         self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b, ',
                             immediate='c ')
         # this may be undesirable behavior: why is a comma inserted?
@@ -161,14 +191,189 @@ class TestCqlshCompletion(CqlshCompletionCase):
                             choices=(',', ')'))
         self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b)',
                             immediate=' VALUES ( ')
-        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b, c)',
-                            immediate=' VALUES ( ')
-        _, results = self.get_completions('INSERT INTO twenty_rows_composite_table (a, b, c) VALUES (')
-        self.assertEqual(results,'<value for a (text)')
+        self.trycompletions('INSERT INTO twenty_rows_composite_table (a, b, c) VAL',
+                            immediate='UES ( ')
+
+        self.trycompletions(
+            'INSERT INTO twenty_rows_composite_table (a, b, c) VALUES (',
+            ['<value for a (text)>'],
+            split_completed_lines=False)
+
+        self.trycompletions(
+            "INSERT INTO twenty_rows_composite_table (a, b, c) VALUES ('",
+            ['<value for a (text)>'],
+            split_completed_lines=False)
+
+        self.trycompletions(
+            "INSERT INTO twenty_rows_composite_table (a, b, c) VALUES ( 'eggs",
+            ['<value for a (text)>'],
+            split_completed_lines=False)
+
+        self.trycompletions(
+            "INSERT INTO twenty_rows_composite_table (a, b, c) VALUES ('eggs'",
+            immediate=', ')
+
+        # I reckon this should pass too
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs',"),
+            ['<value for b (text)>'],
+            split_completed_lines=False)
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam')"),
+            immediate=' ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') "),
+            choices=[';', 'USING', 'IF'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam');"),
+            choices=['?', 'ALTER', 'BEGIN', 'CAPTURE', 'CONSISTENCY', 'COPY',
+                     'CREATE', 'DEBUG', 'DELETE', 'DESC', 'DESCRIBE', 'DROP',
+                     'EXPAND', 'GRANT', 'HELP', 'INSERT', 'LIST', 'PAGING',
+                     'REVOKE', 'SELECT', 'SHOW', 'SOURCE', 'TRACING',
+                     'TRUNCATE', 'UPDATE', 'USE', 'exit', 'quit'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') US"),
+            immediate='ING T')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING"),
+            immediate=' T')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING T"),
+            choices=['TTL', 'TIMESTAMP'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TT"),
+            immediate='L ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TI"),
+            immediate='MESTAMP ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TIMESTAMP "),
+            choices=['<wholenumber>'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL "),
+            choices=['<wholenumber>'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TIMESTAMP 0 "),
+            choices=['AND', ';'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL 0 "),
+            choices=['AND', ';'])
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TIMESTAMP 0 A"),
+            immediate='ND TTL ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL 0 A"),
+            immediate='ND TIMESTAMP ')
+
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL 0 AND TIMESTAMP "),
+            choices=['<wholenumber>'])
+
+        # undesirable
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL 0 AND TIMESTAMP 0 "),
+            choices=['AND', ';'])
+
+        # undesirable
+        self.trycompletions(
+            ("INSERT INTO twenty_rows_composite_table (a, b, c) "
+             "VALUES ( 'eggs', 'sausage', 'spam') USING TTL 0 AND TIMESTAMP 0 AND "),
+            choices=[])
 
 
     def test_complete_in_update(self):
-        self
+        self.trycompletions("UPD", immediate="ATE ")
+        self.trycompletions("UPDATE ",
+                            choices=['twenty_rows_table', 'system_auth.',
+                                     'users', 'has_all_types', 'system.',
+                                     'ascii_with_special_chars',
+                                     'empty_composite_table', 'empty_table',
+                                     'undefined_values_table',
+                                     'dynamic_columns',
+                                     'twenty_rows_composite_table',
+                                     'utf8_with_special_chars', 'ks.',
+                                     'system_traces.', 'songs'],
+                            other_choices_ok=True)
+
+        self.trycompletions("UPDATE empty_table ", choices=['USING', 'SET'])
+
+        self.trycompletions("UPDATE empty_table S",
+                            immediate='ET lonelycol = ')
+        self.trycompletions("UPDATE empty_table SET lon",
+                            immediate='elycol = ')
+        self.trycompletions("UPDATE empty_table SET lonelycol",
+                            immediate=' = ')
+
+        self.trycompletions("UPDATE empty_table U", immediate='SING T')
+        self.trycompletions("UPDATE empty_table USING T",
+                            choices=["TTL", "TIMESTAMP"])
+
+        self.trycompletions("UPDATE empty_table SET lonelycol = ",
+                            choices=['<term (text)>'],
+                            split_completed_lines=False)
+
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eg",
+                            choices=['<term (text)>'],
+                            split_completed_lines=False)
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs'",
+                            choices=[',', 'WHERE'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE ",
+                            choices=['TOKEN(', '<identifier>', '<quotedName>'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE ",
+                            choices=['TOKEN(', '<identifier>', '<quotedName>'])
+
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE lonel",
+                            choices=['<quotedName>', '<identifier>'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE lonelykey ",
+                            choices=['=', '<=', '>=', '>', '<', 'CONTAINS', 'IN', '['])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE lonelykey = 0.0 ",
+                            choices=['AND', 'IF', ';'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE lonelykey = 0.0 AND ",
+                            choices=['TOKEN(', '<identifier>', '<quotedName>'])
+
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE TOKEN(lonelykey ",
+                            choices=[',', ')'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE TOKEN(lonelykey) ",
+                            choices=['=', '<=', '>=', '<', '>'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE TOKEN(lonelykey) <= TOKEN(13) ",
+                            choices=[';', 'AND', 'IF'])
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE TOKEN(lonelykey) <= TOKEN(13) IF ",
+                            choices=['EXISTS', '<quotedName>', '<identifier>'])
+
+        # this seems incorrect -- UPDATE has its own EXISTS logic, right?
+        self.trycompletions("UPDATE empty_table SET lonelycol = 'eggs' WHERE TOKEN(lonelykey) <= TOKEN(13) IF EXISTS ",
+                            choices=['>=', '!=', '<=', 'IN', '[', ';', '=', '<', '>'])
 
     def test_complete_in_delete(self):
         pass
@@ -203,21 +408,21 @@ class TestCqlshCompletion(CqlshCompletionCase):
         self.trycompletions("create keyspace \"ttl\" with replication ="
                                "{'class': 'SimpleStrategy', 'repl", "ication_factor'")
         self.trycompletions("create keyspace foo with replication ="
-                               "{'class': 'SimpleStrategy', 'replication_factor': ", '',
+                               "{'class': 'SimpleStrategy', 'replication_factor': ",
                             choices=('<term>',))
         self.trycompletions("create keyspace foo with replication ="
-                               "{'class': 'SimpleStrategy', 'replication_factor': 1", '',
+                               "{'class': 'SimpleStrategy', 'replication_factor': 1",
                             choices=('<term>',))
         self.trycompletions("create keyspace foo with replication ="
                                "{'class': 'SimpleStrategy', 'replication_factor': 1 ", '}')
         self.trycompletions("create keyspace foo with replication ="
                                "{'class': 'SimpleStrategy', 'replication_factor': 1, ",
-                            '', choices=())
+                            choices=())
         self.trycompletions("create keyspace foo with replication ="
                                "{'class': 'SimpleStrategy', 'replication_factor': 1} ",
-                            '', choices=('AND', ';'))
+                            choices=('AND', ';'))
         self.trycompletions("create keyspace foo with replication ="
-                               "{'class': 'NetworkTopologyStrategy', ", '',
+                               "{'class': 'NetworkTopologyStrategy', ",
                             choices=('<dc_name>',))
         self.trycompletions("create keyspace \"PB and J\" with replication={"
                                "'class': 'NetworkTopologyStrategy'", ', ')
