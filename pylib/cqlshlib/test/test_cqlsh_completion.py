@@ -365,7 +365,92 @@ class TestCqlshCompletion(CqlshCompletionCase):
                             choices=['>=', '!=', '<=', 'IN', '[', ';', '=', '<', '>'])
 
     def test_complete_in_delete(self):
-        pass
+        self.trycompletions('DELETE F', choices=['FROM', '<identifier>', '<quotedName>'])
+
+        self.trycompletions('DELETE a ', choices=['FROM', '[', ','])
+        self.trycompletions('DELETE a [',
+                            choices=['<wholenumber>', 'false', '-', '<uuid>',
+                                     '<pgStringLiteral>', '<float>', 'TOKEN',
+                                     '<identifier>', '<quotedStringLiteral>',
+                                     '{', '[', 'NULL', 'true', '<blobLiteral>'])
+
+        self.trycompletions('DELETE a, ',
+                            choices=['<identifier>', '<quotedName>'])
+
+        self.trycompletions('DELETE a FROM ',
+                            choices=['twenty_rows_table',
+                                     'ascii_with_special_chars', 'users',
+                                     'has_all_types', 'system.',
+                                     'empty_composite_table', 'empty_table',
+                                     'system_auth.', 'undefined_values_table',
+                                     'dynamic_columns',
+                                     'twenty_rows_composite_table',
+                                     'utf8_with_special_chars',
+                                     'system_traces.', 'songs',
+                                     '"' + self.cqlsh.keyspace + '".'])
+
+        self.trycompletions('DELETE FROM ',
+                            choices=['twenty_rows_table',
+                                     'ascii_with_special_chars', 'users',
+                                     'has_all_types', 'system.',
+                                     'empty_composite_table', 'empty_table',
+                                     'system_auth.', 'undefined_values_table',
+                                     'dynamic_columns',
+                                     'twenty_rows_composite_table',
+                                     'utf8_with_special_chars',
+                                     'system_traces.', 'songs',
+                                     '"' + self.cqlsh.keyspace + '".'])
+        self.trycompletions('DELETE FROM twenty_rows_composite_table ',
+                            choices=['USING', 'WHERE'])
+
+        self.trycompletions('DELETE FROM twenty_rows_composite_table U',
+                            immediate='SING TIMESTAMP ')
+
+        self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP ',
+                            choices=['<wholenumber>'])
+        self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0',
+                            choices=['<wholenumber>'])
+        self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 ',
+                            immediate='WHERE ')
+        self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE ',
+                            choices=['a', 'b', 'TOKEN('])
+
+        self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE a ',
+                            choices=['<=', '>=', 'CONTAINS', 'IN', '[', '=', '<', '>'])
+
+        self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE TOKEN(',
+                            immediate='a ')
+        self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE TOKEN(a',
+                            immediate=' ')
+        self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE TOKEN(a ',
+                            choices=[')', ','])
+        self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE TOKEN(a) ',
+                            choices=['>=', '<=', '=', '<', '>'])
+        self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE TOKEN(a) >= ',
+                            choices=[ 'false', 'true', '<pgStringLiteral>',
+                                     'token(', '-', '<float>', 'TOKEN',
+                                     '<identifier>', '<uuid>', '{', '[', 'NULL',
+                                     '<quotedStringLiteral>', '<blobLiteral>',
+                                     '<wholenumber>'])
+        self.trycompletions(('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE '
+                             'TOKEN(a) >= TOKEN(0) '),
+                            choices=['AND', 'IF', ';'])
+        self.trycompletions(('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE '
+                             'TOKEN(a) >= TOKEN(0) IF '),
+                            choices=['EXISTS', '<identifier>', '<quotedName>'])
+        self.trycompletions(('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE '
+                             'TOKEN(a) >= TOKEN(0) IF b '),
+                            choices=['>=', '!=', '<=', 'IN', '[', '=', '<', '>'])
+        self.trycompletions(('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE '
+                             'TOKEN(a) >= TOKEN(0) IF b < 0 '),
+                            choices=['AND', ';'])
+        self.trycompletions(('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE '
+                             'TOKEN(a) >= TOKEN(0) IF b < 0 AND '),
+                            choices=['<identifier>', '<quotedName>'])
+        self.trycompletions(("DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE "
+                             "b = 'eggs'"),
+                            choices=['AND', 'IF', ';'])
+
 
     def test_complete_in_batch(self):
         pass
