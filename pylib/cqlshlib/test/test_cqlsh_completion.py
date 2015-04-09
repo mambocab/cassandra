@@ -428,6 +428,13 @@ class TestCqlshCompletion(CqlshCompletionCase):
         self.trycompletions("create keyspace blah with replication = {'class': 'Sim",
                             "pleStrategy'")
 
+    def test_complete_in_drop(self):
+        self.trycompletions('DR', immediate='OP ')
+        self.trycompletions('DROP ',
+                            choices=['AGGREGATE', 'COLUMNFAMILY', 'FUNCTION',
+                                     'INDEX', 'KEYSPACE', 'ROLE', 'TABLE',
+                                     'TRIGGER', 'TYPE', 'USER'])
+
     def test_complete_in_drop_keyspace(self):
         pass
 
