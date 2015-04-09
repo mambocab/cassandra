@@ -431,8 +431,131 @@ class TestCqlshCompletion(CqlshCompletionCase):
     def test_complete_in_drop_keyspace(self):
         pass
 
+    def create_columnfamily_table_template(self, name):
+        """Parameterized test for CREATE COLUMNFAMILY and CREATE TABLE. Since
+        they're synonyms, they should have the same completion behavior, so this
+        test avoids duplication between tests for the two statements."""
+        prefix = 'CREATE ' + name + ' '
+        quoted_keyspace = '"' + self.cqlsh.keyspace + '"'
+        self.trycompletions(prefix + '',
+                            choices=['IF', quoted_keyspace, '<new_table_name>'])
+        self.trycompletions(prefix + 'IF ',
+                            immediate='NOT EXISTS ')
+        self.trycompletions(prefix + 'IF NOT EXISTS ',
+                            choices=['<new_table_name>', quoted_keyspace])
+        self.trycompletions(prefix + 'IF NOT EXISTS new_table ',
+                            immediate='( ')
+
+        self.trycompletions(prefix + quoted_keyspace, choices=['.', '('])
+
+        self.trycompletions(prefix + quoted_keyspace + '( ',
+                            choices=['<new_column_name>', '<identifier>',
+                                     '<quotedName>'])
+
+        self.trycompletions(prefix + quoted_keyspace + '.',
+                            choices=['<new_table_name>'])
+        self.trycompletions(prefix + quoted_keyspace + '.new_table ',
+                            immediate='( ')
+        self.trycompletions(prefix + quoted_keyspace + '.new_table ( ',
+                            choices=['<new_column_name>', '<identifier>',
+                                     '<quotedName>'])
+
+        self.trycompletions(prefix + ' new_table ( ',
+                            choices=['<new_column_name>', '<identifier>',
+                                     '<quotedName>'])
+        self.trycompletions(prefix + ' new_table (col_a ine',
+                            immediate='t ')
+        self.trycompletions(prefix + ' new_table (col_a int ',
+                            choices=[',', 'PRIMARY'])
+        self.trycompletions(prefix + ' new_table (col_a int P',
+                            immediate='RIMARY KEY ')
+        self.trycompletions(prefix + ' new_table (col_a int PRIMARY KEY ',
+                            choices=[')', ','])
+
+        self.trycompletions(prefix + ' new_table (col_a int PRIMARY KEY,',
+                            choices=['<identifier>', '<quotedName>'])
+        self.trycompletions(prefix + ' new_table (col_a int PRIMARY KEY)',
+                            immediate=' ')
+        self.trycompletions(prefix + ' new_table (col_a int PRIMARY KEY) ',
+                            choices=[';', 'WITH'])
+        self.trycompletions(prefix + ' new_table (col_a int PRIMARY KEY) W',
+                            immediate='ITH ')
+        self.trycompletions(prefix + ' new_table (col_a int PRIMARY KEY) WITH ',
+                            choices=['bloom_filter_fp_chance', 'compaction',
+                                     'compression',
+                                     'dclocal_read_repair_chance',
+                                     'default_time_to_live', 'gc_grace_seconds',
+                                     'max_index_interval',
+                                     'memtable_flush_period_in_ms',
+                                     'read_repair_chance', 'CLUSTERING',
+                                     'COMPACT', 'caching', 'comment',
+                                     'min_index_interval', 'speculative_retry'])
+        self.trycompletions(prefix + ' new_table (col_a int PRIMARY KEY) WITH ',
+                            choices=['bloom_filter_fp_chance', 'compaction',
+                                     'compression',
+                                     'dclocal_read_repair_chance',
+                                     'default_time_to_live', 'gc_grace_seconds',
+                                     'max_index_interval',
+                                     'memtable_flush_period_in_ms',
+                                     'read_repair_chance', 'CLUSTERING',
+                                     'COMPACT', 'caching', 'comment',
+                                     'min_index_interval', 'speculative_retry'])
+        self.trycompletions(prefix + ' new_table (col_a int PRIMARY KEY) WITH bloom_filter_fp_chance ',
+                            immediate='= ')
+        self.trycompletions(prefix + ' new_table (col_a int PRIMARY KEY) WITH bloom_filter_fp_chance = ',
+                            choices=['<float_between_0_and_1>'])
+
+        self.trycompletions(prefix + ' new_table (col_a int PRIMARY KEY) WITH compaction ',
+                            immediate="= {'class': '")
+        self.trycompletions(prefix + " new_table (col_a int PRIMARY KEY) WITH compaction = "
+                            + "{'class': '",
+                            choices=['SizeTieredCompactionStrategy',
+                                     'LeveledCompactionStrategy',
+                                     'DateTieredCompactionStrategy'])
+        self.trycompletions(prefix + " new_table (col_a int PRIMARY KEY) WITH compaction = "
+                            + "{'class': 'S",
+                            immediate="izeTieredCompactionStrategy'")
+        self.trycompletions(prefix + " new_table (col_a int PRIMARY KEY) WITH compaction = "
+                            + "{'class': 'SizeTieredCompactionStrategy",
+                            immediate="'")
+        self.trycompletions(prefix + " new_table (col_a int PRIMARY KEY) WITH compaction = "
+                            + "{'class': 'SizeTieredCompactionStrategy'",
+                            choices=['}', ','])
+        self.trycompletions(prefix + " new_table (col_a int PRIMARY KEY) WITH compaction = "
+                            + "{'class': 'SizeTieredCompactionStrategy', ",
+                            immediate="'")
+        self.trycompletions(prefix + " new_table (col_a int PRIMARY KEY) WITH compaction = "
+                            + "{'class': 'SizeTieredCompactionStrategy', '",
+                            choices=['bucket_high', 'bucket_low', 'class',
+                                     'enabled', 'max_threshold',
+                                     'min_sstable_size', 'min_threshold',
+                                     'tombstone_compaction_interval',
+                                     'tombstone_threshold',
+                                     'unchecked_tombstone_compaction', ])
+        self.trycompletions(prefix + " new_table (col_a int PRIMARY KEY) WITH compaction = "
+                            + "{'class': 'SizeTieredCompactionStrategy'}",
+                            choices=[';', 'AND'])
+        self.trycompletions(prefix + " new_table (col_a int PRIMARY KEY) WITH compaction = "
+                            + "{'class': 'SizeTieredCompactionStrategy'} AND ",
+                            choices=['bloom_filter_fp_chance', 'compaction',
+                                     'compression',
+                                     'dclocal_read_repair_chance',
+                                     'default_time_to_live', 'gc_grace_seconds',
+                                     'max_index_interval',
+                                     'memtable_flush_period_in_ms',
+                                     'read_repair_chance', 'CLUSTERING',
+                                     'COMPACT', 'caching', 'comment',
+                                     'min_index_interval', 'speculative_retry'])
+
     def test_complete_in_create_columnfamily(self):
-        pass
+        self.trycompletions('CREATE C', choices=['COLUMNFAMILY', 'CUSTOM'])
+        self.trycompletions('CREATE CO', immediate='LUMNFAMILY ')
+        self.create_columnfamily_table_template('COLUMNFAMILY')
+
+    def test_complete_in_create_table(self):
+        self.trycompletions('CREATE T', choices=['TRIGGER', 'TABLE', 'TYPE'])
+        self.trycompletions('CREATE TA', immediate='BLE ')
+        self.create_columnfamily_table_template('TABLE')
 
     def test_complete_in_drop_columnfamily(self):
         pass
