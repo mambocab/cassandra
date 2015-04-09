@@ -436,7 +436,16 @@ class TestCqlshCompletion(CqlshCompletionCase):
                                      'TRIGGER', 'TYPE', 'USER'])
 
     def test_complete_in_drop_keyspace(self):
-        pass
+        self.trycompletions('DROP K', immediate='EYSPACE ')
+        quoted_keyspace = '"' + self.cqlsh.keyspace + '"'
+        self.trycompletions('DROP KEYSPACE ',
+                            choices=['IF', quoted_keyspace])
+
+        self.trycompletions('DROP KEYSPACE ' + quoted_keyspace,
+                            choices=[';'])
+
+        self.trycompletions('DROP KEYSPACE I',
+                            immediate='F EXISTS ' + quoted_keyspace + ';')
 
     def test_complete_in_create_columnfamily(self):
         pass
