@@ -108,6 +108,8 @@ except ImportError, e:
              'Module load path: %r\n\n'
              'Error: %s\n' % (sys.executable, sys.path, e))
 
+assert False, cassandra.__file__
+
 from cassandra.cluster import Cluster, PagedResult
 from cassandra.query import SimpleStatement, ordered_dict_factory
 from cassandra.policies import WhiteListRoundRobinPolicy
