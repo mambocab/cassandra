@@ -176,7 +176,7 @@ class TestCqlshOutput(BaseTestCase):
              MMMMM
             -------
 
-                10
+                20
                 GG
 
 
@@ -334,18 +334,18 @@ class TestCqlshOutput(BaseTestCase):
                  where num in (0, 1, 2, 3, 4);''', """
              decimalcol       | doublecol | floatcol
              MMMMMMMMMM         MMMMMMMMM   MMMMMMMM
-            ------------------+-----------+----------
+            ------------------+-----------+-------------
 
-                  19952.11882 |         1 |     -2.1
-             GGGGGGGGGGGGGGGG     GGGGGGG      GGGGG
-                        1E-14 |     1e+07 |    1e+05
-             GGGGGGGGGGGGGGGG     GGGGGGG      GGGGG
-                          0.0 |         0 |        0
-             GGGGGGGGGGGGGGGG     GGGGGGG      GGGGG
-             10.0000000000000 |   -1004.1 |    1e+08
-             GGGGGGGGGGGGGGGG     GGGGGGG      GGGGG
+                  19952.11882 |         1 |        -2.1
+             GGGGGGGGGGGGGGGG     GGGGGGG         GGGGG
+                        1E-14 |     1e+07 | 99999.99219
+             GGGGGGGGGGGGGGGG     GGGGGGG   GGGGGGGGGGG
+                          0.0 |         0 |           0
+             GGGGGGGGGGGGGGGG     GGGGGGG         GGGGG
+             10.0000000000000 |   -1004.1 |       1e+08
+             GGGGGGGGGGGGGGGG     GGGGGGG         GGGGG
                               |           |
-             nnnnnnnnnnnnnnnn     nnnnnnn      nnnnn
+             nnnnnnnnnnnnnnnn     nnnnnnn         nnnnn
 
 
             (5 rows)
@@ -375,7 +375,7 @@ class TestCqlshOutput(BaseTestCase):
              MMMMMMMMMMMM
             --------------------------
 
-             2012-05-14 07:53:20-0500
+             2012-05-14 12:53:20+0000
              GGGGGGGGGGGGGGGGGGGGGGGG
 
 
@@ -610,10 +610,10 @@ class TestCqlshOutput(BaseTestCase):
                 varcharcol text,
                 varintcol varint
             ) WITH bloom_filter_fp_chance = 0.01
-                AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+                AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
                 AND comment = ''
-                AND compaction = {'min_threshold': '4', 'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32'}
-                AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+                AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+                AND compression = {'chunk_length_in_kb': '64', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
                 AND dclocal_read_repair_chance = 0.1
                 AND default_time_to_live = 0
                 AND gc_grace_seconds = 864000
@@ -621,7 +621,7 @@ class TestCqlshOutput(BaseTestCase):
                 AND memtable_flush_period_in_ms = 0
                 AND min_index_interval = 128
                 AND read_repair_chance = 0.0
-                AND speculative_retry = '99.0PERCENTILE';
+                AND speculative_retry = '99PERCENTILE';
 
         """ % quote_name(get_test_keyspace()))
 
@@ -630,7 +630,7 @@ class TestCqlshOutput(BaseTestCase):
                 for semicolon in (';', ''):
                     output = c.cmd_and_response('%s has_all_types%s' % (cmdword, semicolon))
                     self.assertNoHasColors(output)
-                    self.assertEqual(output, table_desc3)
+                    self.assertSequenceEqual(output.split('\n'), table_desc3.split('\n'))
 
     def test_describe_columnfamilies_output(self):
         output_re = r'''
