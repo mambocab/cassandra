@@ -176,7 +176,7 @@ class TestCqlshOutput(BaseTestCase):
              MMMMM
             -------
 
-                20
+                10
                 GG
 
 
@@ -375,7 +375,7 @@ class TestCqlshOutput(BaseTestCase):
              MMMMMMMMMMMM
             --------------------------
 
-             2012-05-14 12:53:20+0000
+             2012-05-14 07:53:20-0500
              GGGGGGGGGGGGGGGGGGGGGGGG
 
 

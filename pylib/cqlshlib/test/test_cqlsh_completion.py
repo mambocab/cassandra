@@ -373,11 +373,8 @@ class TestCqlshCompletion(CqlshCompletionCase):
         self.trycompletions('DELETE a [',
                             choices=['<wholenumber>', 'false', '-', '<uuid>',
                                      '<pgStringLiteral>', '<float>', 'TOKEN',
-                                     '<quotedStringLiteral>',
-                                     '{', '[', 'NULL', 'true', '<blobLiteral>',
-                                     'system_auth.', 'system.', 'system_distributed.',
-                                     '"' + self.cqlsh.keyspace + '".', 'system_schema.',
-                                     'system_traces.'])
+                                     '<identifier>', '<quotedStringLiteral>',
+                                     '{', '[', 'NULL', 'true', '<blobLiteral>'])
 
         self.trycompletions('DELETE a, ',
                             choices=['<identifier>', '<quotedName>'])
@@ -438,12 +435,9 @@ class TestCqlshCompletion(CqlshCompletionCase):
         self.trycompletions('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE TOKEN(a) >= ',
                             choices=['false', 'true', '<pgStringLiteral>',
                                      'token(', '-', '<float>', 'TOKEN',
-                                     '<uuid>', '{', '[', 'NULL',
+                                     '<identifier>', '<uuid>', '{', '[', 'NULL',
                                      '<quotedStringLiteral>', '<blobLiteral>',
-                                     '<wholenumber>', 'system_auth.',
-                                     'system_distributed.', 'system_schema.',
-                                     'system_traces.', 'system.',
-                                     '"' + self.cqlsh.keyspace + '".'])
+                                     '<wholenumber>'])
         self.trycompletions(('DELETE FROM twenty_rows_composite_table USING TIMESTAMP 0 WHERE '
                              'TOKEN(a) >= TOKEN(0) '),
                             choices=['AND', 'IF', ';'])
@@ -518,6 +512,9 @@ class TestCqlshCompletion(CqlshCompletionCase):
     def test_complete_in_string_literals(self):
         # would be great if we could get a space after this sort of completion,
         # but readline really wants to make things difficult for us
+        self.trycompletions('insert into system."Index', 'Info"')
+        self.trycompletions('USE "', choices=('system', self.cqlsh.keyspace),
+                            other_choices_ok=True)
         self.trycompletions("create keyspace blah with replication = {'class': 'Sim",
                             "pleStrategy'")
 
@@ -538,13 +535,7 @@ class TestCqlshCompletion(CqlshCompletionCase):
                             choices=[';'])
 
         self.trycompletions('DROP KEYSPACE I',
-                            immediate='F ')
-
-        self.trycompletions('DROP KEYSPACE IF',
-                            immediate=' ')
-
-        self.trycompletions('DROP KEYSPACE IF ',
-                            choices=[';', 'EXISTS'])
+                            immediate='F EXISTS ' + quoted_keyspace + ';')
 
     def create_columnfamily_table_template(self, name):
         """Parameterized test for CREATE COLUMNFAMILY and CREATE TABLE. Since
@@ -555,7 +546,7 @@ class TestCqlshCompletion(CqlshCompletionCase):
         self.trycompletions(prefix + '',
                             choices=['IF', quoted_keyspace, '<new_table_name>'])
         self.trycompletions(prefix + 'IF ',
-                            choices=['NOT', '('])
+                            immediate='NOT EXISTS ')
         self.trycompletions(prefix + 'IF NOT EXISTS ',
                             choices=['<new_table_name>', quoted_keyspace])
         self.trycompletions(prefix + 'IF NOT EXISTS new_table ',
