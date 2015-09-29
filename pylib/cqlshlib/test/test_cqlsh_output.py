@@ -176,7 +176,7 @@ class TestCqlshOutput(BaseTestCase):
              MMMMM
             -------
 
-                10
+                20
                 GG
 
 
