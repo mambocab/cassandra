@@ -512,9 +512,6 @@ class TestCqlshCompletion(CqlshCompletionCase):
     def test_complete_in_string_literals(self):
         # would be great if we could get a space after this sort of completion,
         # but readline really wants to make things difficult for us
-        self.trycompletions('insert into system."Index', 'Info"')
-        self.trycompletions('USE "', choices=('system', self.cqlsh.keyspace),
-                            other_choices_ok=True)
         self.trycompletions("create keyspace blah with replication = {'class': 'Sim",
                             "pleStrategy'")
 
