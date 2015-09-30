@@ -334,18 +334,18 @@ class TestCqlshOutput(BaseTestCase):
                  where num in (0, 1, 2, 3, 4);''', """
              decimalcol       | doublecol | floatcol
              MMMMMMMMMM         MMMMMMMMM   MMMMMMMM
-            ------------------+-----------+-------------
+            ------------------+-----------+----------
 
-                  19952.11882 |         1 |        -2.1
-             GGGGGGGGGGGGGGGG     GGGGGGG         GGGGG
-                        1E-14 |     1e+07 | 99999.99219
-             GGGGGGGGGGGGGGGG     GGGGGGG   GGGGGGGGGGG
-                          0.0 |         0 |           0
-             GGGGGGGGGGGGGGGG     GGGGGGG         GGGGG
-             10.0000000000000 |   -1004.1 |       1e+08
-             GGGGGGGGGGGGGGGG     GGGGGGG         GGGGG
+                  19952.11882 |         1 |     -2.1
+             GGGGGGGGGGGGGGGG     GGGGGGG      GGGGG
+                        1E-14 |     1e+07 |    1e+05
+             GGGGGGGGGGGGGGGG     GGGGGGG      GGGGG
+                          0.0 |         0 |        0
+             GGGGGGGGGGGGGGGG     GGGGGGG      GGGGG
+             10.0000000000000 |   -1004.1 |    1e+08
+             GGGGGGGGGGGGGGGG     GGGGGGG      GGGGG
                               |           |
-             nnnnnnnnnnnnnnnn     nnnnnnn         nnnnn
+             nnnnnnnnnnnnnnnn     nnnnnnn      nnnnn
 
 
             (5 rows)
