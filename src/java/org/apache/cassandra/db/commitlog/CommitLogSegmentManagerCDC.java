@@ -62,9 +62,13 @@ public class CommitLogSegmentManagerCDC extends AbstractCommitLogSegmentManager
         cdcSizeTracker.processDiscardedSegment(segment);
 
         if (segment.getCDCState() == CDCState.CONTAINS)
+        {
+            logger.error("renaming a CDC segment");
             FileUtils.renameWithConfirm(segment.logFile.getAbsolutePath(), DatabaseDescriptor.getCDCLogLocation() + File.separator + segment.logFile.getName());
+        }
         else
         {
+            logger.error("discarding a non-CDC segment");
             if (delete)
                 FileUtils.deleteWithConfirm(segment.logFile);
         }

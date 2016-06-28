@@ -32,6 +32,7 @@ public class CommitLogSegmentManagerStandard extends AbstractCommitLogSegmentMan
 
     public void discard(CommitLogSegment segment, boolean delete)
     {
+        logger.error("discarding a non-CDC segment");
         segment.close();
         if (delete)
             FileUtils.deleteWithConfirm(segment.logFile);
