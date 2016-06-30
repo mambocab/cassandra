@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.io.Files;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -51,7 +52,7 @@ public class LongStreamingTest
     @BeforeClass
     public static void setup() throws Exception
     {
-        SchemaLoader.cleanupAndLeaveDirs();
+        SchemaLoader.cleanupAndLeaveDirs(CommitLog.instance);
         Keyspace.setInitialized();
         StorageService.instance.initServer();
 

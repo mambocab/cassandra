@@ -27,6 +27,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Files;
 
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -55,7 +56,7 @@ public class CQLSSTableWriterTest
     @BeforeClass
     public static void setup() throws Exception
     {
-        SchemaLoader.cleanupAndLeaveDirs();
+        SchemaLoader.cleanupAndLeaveDirs(CommitLog.instance);
         Keyspace.setInitialized();
         StorageService.instance.initServer();
     }

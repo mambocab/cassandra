@@ -19,6 +19,7 @@ package org.apache.cassandra.dht;
 
 import java.io.IOException;
 
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -31,7 +32,7 @@ public class OrderPreservingPartitionerTest extends PartitionerTestCase
     {
         // Since OrderPreservingPartitioner#describeOwnership tries to read SSTables,
         // we need to clear data dir to clear garbage from previous test before running tests.
-        SchemaLoader.cleanupAndLeaveDirs();
+        SchemaLoader.cleanupAndLeaveDirs(CommitLog.instance);
     }
 
     public void initPartitioner()

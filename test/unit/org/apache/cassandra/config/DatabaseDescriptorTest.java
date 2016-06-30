@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
 
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -82,7 +83,7 @@ public class DatabaseDescriptorTest
     @Test
     public void testTransKsMigration() throws ConfigurationException, IOException
     {
-        SchemaLoader.cleanupAndLeaveDirs();
+        SchemaLoader.cleanupAndLeaveDirs(CommitLog.instance);
         Schema.instance.loadFromDisk();
         assertEquals(0, Schema.instance.getNonSystemKeyspaces().size());
 

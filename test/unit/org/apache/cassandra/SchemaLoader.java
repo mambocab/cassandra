@@ -658,14 +658,14 @@ public class SchemaLoader
         return CompressionParams.noCompression();
     }
 
-    public static void cleanupAndLeaveDirs() throws IOException
+    public static void cleanupAndLeaveDirs(CommitLog cl) throws IOException
     {
         // We need to stop and unmap all CLS instances prior to cleanup() or we'll get failures on Windows.
-        CommitLog.instance.stopUnsafe(true);
+        cl.stopUnsafe(true);
         mkdirs();
         cleanup();
         mkdirs();
-        CommitLog.instance.restartUnsafe();
+        cl.restartUnsafe();
     }
 
     public static void cleanup()
