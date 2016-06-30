@@ -155,6 +155,8 @@ public class CassandraDaemon
     protected final StartupChecks startupChecks;
     private boolean setupCompleted;
 
+    private final CommitLog commitLog = CommitLog.instance;
+
     public CassandraDaemon() {
         this(false);
     }
@@ -313,7 +315,7 @@ public class CassandraDaemon
         // Replay any CommitLogSegments found on disk
         try
         {
-            CommitLog.instance.recoverSegmentsOnDisk();
+            commitLog.recoverSegmentsOnDisk();
         }
         catch (IOException e)
         {
