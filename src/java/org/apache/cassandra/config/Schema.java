@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import com.sun.tools.doclets.internal.toolkit.util.CommentedMethodFinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +62,8 @@ public class Schema
     public static final Set<String> REPLICATED_SYSTEM_KEYSPACE_NAMES = ImmutableSet.of(TraceKeyspace.NAME,
                                                                                        AuthKeyspace.NAME,
                                                                                        SystemDistributedKeyspace.NAME);
+
+    public static final CommitLog commitLog = CommitLog.instance;
 
     /**
      * longest permissible KS or CF name.  Our main concern is that filename not be more than 255 characters;
@@ -634,7 +637,7 @@ public class Schema
         Keyspace.writeOrder.awaitNewBarrier();
 
         // force a new segment in the CL
-        CommitLog.instance.forceRecycleAllSegments(droppedCfs);
+        commitLog.forceRecycleAllSegments(droppedCfs);
 
         MigrationManager.instance.notifyDropKeyspace(ksm);
     }
@@ -689,7 +692,7 @@ public class Schema
         Keyspace.open(ksName).dropCf(cfm.cfId);
         MigrationManager.instance.notifyDropColumnFamily(cfm);
 
-        CommitLog.instance.forceRecycleAllSegments(Collections.singleton(cfm.cfId));
+        commitLog.forceRecycleAllSegments(Collections.singleton(cfm.cfId));
     }
 
     public void addView(ViewDefinition view)
@@ -745,7 +748,7 @@ public class Schema
         Keyspace.open(ksName).viewManager.reload();
         MigrationManager.instance.notifyDropView(view);
 
-        CommitLog.instance.forceRecycleAllSegments(Collections.singleton(view.metadata.cfId));
+        commitLog.forceRecycleAllSegments(Collections.singleton(view.metadata.cfId));
     }
 
     public void addType(UserType ut)
