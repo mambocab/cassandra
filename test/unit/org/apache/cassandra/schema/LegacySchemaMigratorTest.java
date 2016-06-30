@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.junit.Test;
 
 import org.apache.cassandra.SchemaLoader;
@@ -63,7 +64,7 @@ public class LegacySchemaMigratorTest
     @Test
     public void testMigrate() throws IOException
     {
-        CQLTester.cleanupAndLeaveDirs();
+        CQLTester.cleanupAndLeaveDirs(CommitLog.instance);
 
         Keyspaces expected = keyspacesToMigrate();
 
