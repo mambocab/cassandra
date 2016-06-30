@@ -53,6 +53,7 @@ public class RecoveryManagerTruncateTest
 {
     private static final String KEYSPACE1 = "RecoveryManagerTruncateTest";
     private static final String CF_STANDARD1 = "Standard1";
+    private final CommitLog commitLog = CommitLog.instance;
 
     public RecoveryManagerTruncateTest(ParameterizedClass commitLogCompression, EncryptionContext encryptionContext)
     {
@@ -74,7 +75,7 @@ public class RecoveryManagerTruncateTest
     @Before
     public void setUp() throws IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
     }
 
     @BeforeClass
@@ -104,7 +105,7 @@ public class RecoveryManagerTruncateTest
 
         // and now truncate it
         cfs.truncateBlocking();
-        assert 0 != CommitLog.instance.resetUnsafe(false);
+        assert 0 != commitLog.resetUnsafe(false);
 
         // and validate truncation.
         Util.assertEmptyUnfiltered(Util.cmd(cfs).build());

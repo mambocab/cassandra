@@ -41,6 +41,7 @@ import org.apache.cassandra.io.util.FileUtils;
 public class CommitLogSegmentManagerCDCTest extends CQLTester
 {
     private static Random random = new Random();
+    private final CommitLog commitLog = CommitLog.instance;
 
     @BeforeClass
     public static void checkConfig()
@@ -52,7 +53,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
     public void before() throws IOException
     {
         // disable reserve segment to get more deterministic allocation/testing of CDC boundary states
-        CommitLog.instance.forceRecycleAllSegments();
+        commitLog.forceRecycleAllSegments();
         for (File f : new File(DatabaseDescriptor.getCDCLogLocation()).listFiles())
             FileUtils.deleteWithConfirm(f);
     }
@@ -61,7 +62,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
     public void testCDCWriteTimeout() throws Throwable
     {
         createTable("CREATE TABLE %s (idx int, data text, primary key(idx)) WITH cdc=true;");
-        CommitLogSegmentManagerCDC cdcMgr = (CommitLogSegmentManagerCDC)CommitLog.instance.segmentManager;
+        CommitLogSegmentManagerCDC cdcMgr = (CommitLogSegmentManagerCDC)commitLog.segmentManager;
         CFMetaData cfm = currentTableMetadata();
 
         // Confirm that logic to check for whether or not we can allocate new CDC segments works
@@ -93,7 +94,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
 
             // Confirm that, on flush+recyle, we see files show up in cdc_raw
             Keyspace.open(keyspace()).getColumnFamilyStore(currentTable()).forceBlockingFlush();
-            CommitLog.instance.forceRecycleAllSegments();
+            commitLog.forceRecycleAllSegments();
             cdcMgr.awaitManagementTasksCompletion();
             Assert.assertTrue("Expected files to be moved to overflow.", getCDCRawCount() > 0);
 
@@ -114,7 +115,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
     @Test
     public void testCLSMCDCDiscardLogic() throws Throwable
     {
-        CommitLogSegmentManagerCDC cdcMgr = (CommitLogSegmentManagerCDC)CommitLog.instance.segmentManager;
+        CommitLogSegmentManagerCDC cdcMgr = (CommitLogSegmentManagerCDC) commitLog.segmentManager;
 
         createTable("CREATE TABLE %s (idx int, data text, primary key(idx)) WITH cdc=false;");
         for (int i = 0; i < 8; i++)
@@ -127,7 +128,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
         // Should have 4 segments CDC since we haven't flushed yet, 3 PERMITTED, one of which is active, and 1 PERMITTED, in waiting
         Assert.assertEquals(4 * DatabaseDescriptor.getCommitLogSegmentSize(), cdcMgr.updateCDCTotalSize());
         expectCurrentCDCState(CDCState.PERMITTED);
-        CommitLog.instance.forceRecycleAllSegments();
+        commitLog.forceRecycleAllSegments();
 
         // on flush, these PERMITTED should be deleted
         Assert.assertEquals(0, new File(DatabaseDescriptor.getCDCLogLocation()).listFiles().length);
@@ -141,7 +142,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
         }
         // 4 total again, 3 CONTAINS, 1 in waiting PERMITTED
         Assert.assertEquals(4 * DatabaseDescriptor.getCommitLogSegmentSize(), cdcMgr.updateCDCTotalSize());
-        CommitLog.instance.forceRecycleAllSegments();
+        commitLog.forceRecycleAllSegments();
         expectCurrentCDCState(CDCState.PERMITTED);
 
         // On flush, PERMITTED is deleted, CONTAINS is preserved.
@@ -153,7 +154,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
     @Test
     public void testSegmentFlaggingOnCreation() throws Throwable
     {
-        CommitLogSegmentManagerCDC cdcMgr = (CommitLogSegmentManagerCDC)CommitLog.instance.segmentManager;
+        CommitLogSegmentManagerCDC cdcMgr = (CommitLogSegmentManagerCDC) commitLog.segmentManager;
         String ct = createTable("CREATE TABLE %s (idx int, data text, primary key(idx)) WITH cdc=true;");
 
         int origSize = DatabaseDescriptor.getCDCSpaceInMB();
@@ -175,7 +176,7 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
             catch (WriteTimeoutException e) { }
 
             expectCurrentCDCState(CDCState.FORBIDDEN);
-            CommitLog.instance.forceRecycleAllSegments();
+            commitLog.forceRecycleAllSegments();
 
             cdcMgr.awaitManagementTasksCompletion();
             new File(DatabaseDescriptor.getCDCLogLocation()).listFiles()[0].delete();
@@ -190,8 +191,8 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
 
             // Set space to 0, confirm newly allocated segments are FORBIDDEN
             DatabaseDescriptor.setCDCSpaceInMB(0);
-            CommitLog.instance.forceRecycleAllSegments();
-            CommitLog.instance.segmentManager.awaitManagementTasksCompletion();
+            commitLog.forceRecycleAllSegments();
+            commitLog.segmentManager.awaitManagementTasksCompletion();
             expectCurrentCDCState(CDCState.FORBIDDEN);
         }
         finally
@@ -215,6 +216,6 @@ public class CommitLogSegmentManagerCDCTest extends CQLTester
     private void expectCurrentCDCState(CDCState state)
     {
         Assert.assertEquals("Received unexpected CDCState on current allocatingFrom segment.",
-            state, CommitLog.instance.segmentManager.allocatingFrom.getCDCState());
+            state, commitLog.segmentManager.allocatingFrom.getCDCState());
     }
 }

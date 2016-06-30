@@ -55,6 +55,7 @@ public class RecoveryManagerMissingHeaderTest
 
     private static final String KEYSPACE2 = "RecoveryManager3Test2";
     private static final String CF_STANDARD3 = "Standard3";
+    private final CommitLog commitLog = CommitLog.instance;
 
     public RecoveryManagerMissingHeaderTest(ParameterizedClass commitLogCompression, EncryptionContext encryptionContext)
     {
@@ -76,7 +77,7 @@ public class RecoveryManagerMissingHeaderTest
     @Before
     public void setUp() throws IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
     }
 
     @BeforeClass
@@ -116,7 +117,7 @@ public class RecoveryManagerMissingHeaderTest
                 FileUtils.deleteWithConfirm(file);
         }
 
-        CommitLog.instance.resetUnsafe(false);
+        commitLog.resetUnsafe(false);
 
         Assert.assertTrue(Util.equal(upd1, Util.getOnlyPartitionUnfiltered(Util.cmd(keyspace1.getColumnFamilyStore(CF_STANDARD1), dk).build()).unfilteredIterator()));
         Assert.assertTrue(Util.equal(upd2, Util.getOnlyPartitionUnfiltered(Util.cmd(keyspace2.getColumnFamilyStore(CF_STANDARD3), dk).build()).unfilteredIterator()));

@@ -42,6 +42,9 @@ import org.apache.cassandra.utils.KillerForTests;
 
 public class CommitLogReaderTest extends CQLTester
 {
+
+    private final CommitLog commitLog = CommitLog.instance;
+
     @BeforeClass
     public static void beforeClass()
     {
@@ -52,7 +55,7 @@ public class CommitLogReaderTest extends CQLTester
     @Before
     public void before() throws IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
     }
 
     @Test
@@ -256,7 +259,7 @@ public class CommitLogReaderTest extends CQLTester
             execute("INSERT INTO %s (idx, data) VALUES (?, ?)", i, Integer.toString(i));
         }
 
-        CommitLogPosition result = CommitLog.instance.getCurrentPosition();
+        CommitLogPosition result = commitLog.getCurrentPosition();
 
         for (int i = midpoint; i < entryCount; i++)
             execute("INSERT INTO %s (idx, data) VALUES (?, ?)", i, Integer.toString(i));
