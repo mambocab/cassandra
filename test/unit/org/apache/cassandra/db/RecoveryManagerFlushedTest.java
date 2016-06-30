@@ -56,6 +56,7 @@ public class RecoveryManagerFlushedTest
     private static final String KEYSPACE1 = "RecoveryManager2Test";
     private static final String CF_STANDARD1 = "Standard1";
     private static final String CF_STANDARD2 = "Standard2";
+    private final CommitLog commitLog = CommitLog.instance;
 
     public RecoveryManagerFlushedTest(ParameterizedClass commitLogCompression, EncryptionContext encryptionContext)
     {
@@ -77,7 +78,7 @@ public class RecoveryManagerFlushedTest
     @Before
     public void setUp() throws IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
     }
 
     @BeforeClass
@@ -118,7 +119,7 @@ public class RecoveryManagerFlushedTest
         logger.debug("begin manual replay");
         // replay the commit log (nothing on Standard1 should be replayed since everything was flushed, so only the row on Standard2
         // will be replayed)
-        int replayed = CommitLog.instance.resetUnsafe(false);
+        int replayed = commitLog.resetUnsafe(false);
         assert replayed == 1 : "Expecting only 1 replayed mutation, got " + replayed;
     }
 
