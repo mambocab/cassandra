@@ -28,6 +28,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.index.TargetParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -165,7 +166,8 @@ public class CustomCassandraIndex implements Index
         indexCfs = ColumnFamilyStore.createColumnFamilyStore(baseCfs.keyspace,
                                                              cfm.cfName,
                                                              cfm,
-                                                             baseCfs.getTracker().loadsstables);
+                                                             baseCfs.getTracker().loadsstables,
+                                                             CommitLog.instance);
         indexedColumn = target.left;
     }
 

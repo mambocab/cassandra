@@ -87,6 +87,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 {
     // The directories which will be searched for sstables on cfs instantiation.
     private static volatile Directories.DataDirectory[] initialDirectories = Directories.dataDirectories;
+    private final CommitLog commitLog;
 
     /**
      * A hook to add additional directories to initialDirectories.
@@ -196,8 +197,6 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
     @VisibleForTesting
     public static volatile ColumnFamilyStore discardFlushResults;
-
-    private static final CommitLog commitLog = CommitLog.instance;
 
     public final Keyspace keyspace;
     public final String name;
@@ -374,9 +373,10 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                              int generation,
                              CFMetaData metadata,
                              Directories directories,
-                             boolean loadSSTables)
+                             boolean loadSSTables,
+                             CommitLog commitLog)
     {
-        this(keyspace, columnFamilyName, generation, metadata, directories, loadSSTables, true);
+        this(keyspace, columnFamilyName, generation, metadata, directories, loadSSTables, commitLog, true);
     }
 
 
@@ -387,6 +387,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
                               CFMetaData metadata,
                               Directories directories,
                               boolean loadSSTables,
+                              CommitLog commitLog,
                               boolean registerBookkeeping)
     {
         assert directories != null;
@@ -394,6 +395,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         this.keyspace = keyspace;
         this.metadata = metadata;
+        this.commitLog = commitLog;
         name = columnFamilyName;
         minCompactionThreshold = new DefaultValue<>(metadata.params.compaction.minCompactionThreshold());
         maxCompactionThreshold = new DefaultValue<>(metadata.params.compaction.maxCompactionThreshold());
@@ -566,15 +568,16 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     }
 
 
-    public static ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, CFMetaData metadata, boolean loadSSTables)
+    public static ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace, CFMetaData metadata, boolean loadSSTables, CommitLog commitLog)
     {
-        return createColumnFamilyStore(keyspace, metadata.cfName, metadata, loadSSTables);
+        return createColumnFamilyStore(keyspace, metadata.cfName, metadata, loadSSTables, commitLog);
     }
 
     public static synchronized ColumnFamilyStore createColumnFamilyStore(Keyspace keyspace,
                                                                          String columnFamily,
                                                                          CFMetaData metadata,
-                                                                         boolean loadSSTables)
+                                                                         boolean loadSSTables,
+                                                                         CommitLog commitLog)
     {
         // get the max generation number, to prevent generation conflicts
         Directories directories = new Directories(metadata, initialDirectories);
@@ -591,7 +594,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         Collections.sort(generations);
         int value = (generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
 
-        return new ColumnFamilyStore(keyspace, columnFamily, value, metadata, directories, loadSSTables);
+        return new ColumnFamilyStore(keyspace, columnFamily, value, metadata, directories, loadSSTables, commitLog);
     }
 
     /**
@@ -1061,7 +1064,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
             // we then ensure an atomic decision is made about the upper bound of the continuous range of commit log
             // records owned by this memtable
-            setCommitLogUpperBound(commitLogUpperBound);
+            setCommitLogUpperBound(commitLogUpperBound, commitLog);
 
             // we then issue the barrier; this lets us wait for all operations started prior to the barrier to complete;
             // since this happens after wiring up the commitLogUpperBound, we also know all operations with earlier
@@ -1218,7 +1221,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     }
 
     // atomically set the upper bound for the commit log
-    private static void setCommitLogUpperBound(AtomicReference<CommitLogPosition> commitLogUpperBound)
+    private static void setCommitLogUpperBound(AtomicReference<CommitLogPosition> commitLogUpperBound,
+                                               CommitLog commitLog)
     {
         // we attempt to set the holder to the current commit log context. at the same time all writes to the memtables are
         // also maintaining this value, so if somebody sneaks ahead of us somehow (should be rare) we simply retry,

@@ -29,6 +29,7 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.cassandra.config.CFMetaData;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.db.*;
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.apache.cassandra.db.marshal.UTF8Type;
 import org.apache.cassandra.dht.Murmur3Partitioner;
 import org.apache.cassandra.io.sstable.Component;
@@ -139,7 +140,7 @@ public class MockSchema
     {
         String cfname = "mockcf" + (id.incrementAndGet());
         CFMetaData metadata = newCFMetaData(ksname, cfname);
-        return new ColumnFamilyStore(ks, cfname, 0, metadata, new Directories(metadata), false, false);
+        return new ColumnFamilyStore(ks, cfname, 0, metadata, new Directories(metadata), false, CommitLog.instance, false);
     }
 
     public static CFMetaData newCFMetaData(String ksname, String cfname)

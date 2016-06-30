@@ -30,6 +30,7 @@ import java.util.stream.StreamSupport;
 
 import com.google.common.collect.ImmutableSet;
 
+import org.apache.cassandra.db.commitlog.CommitLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +79,8 @@ public abstract class CassandraIndex implements Index
     protected ColumnFamilyStore indexCfs;
     protected ColumnDefinition indexedColumn;
     protected CassandraIndexFunctions functions;
+
+    private final CommitLog commitLog = CommitLog.instance;
 
     protected CassandraIndex(ColumnFamilyStore baseCfs, IndexMetadata indexDef)
     {
@@ -229,7 +232,8 @@ public abstract class CassandraIndex implements Index
         indexCfs = ColumnFamilyStore.createColumnFamilyStore(baseCfs.keyspace,
                                                              cfm.cfName,
                                                              cfm,
-                                                             baseCfs.getTracker().loadsstables);
+                                                             baseCfs.getTracker().loadsstables,
+                                                             commitLog);
         indexedColumn = target.left;
     }
 
