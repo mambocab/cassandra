@@ -91,6 +91,8 @@ public class Keyspace
         }
     };
 
+    private static final CommitLog commitLog = CommitLog.instance;
+
     private static volatile boolean initialized = false;
 
     public static void setInitialized()
@@ -377,7 +379,7 @@ public class Keyspace
             // CFS being created for the first time, either on server startup or new CF being added.
             // We don't worry about races here; startup is safe, and adding multiple idential CFs
             // simultaneously is a "don't do that" scenario.
-            ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(metadata.cfId, ColumnFamilyStore.createColumnFamilyStore(this, metadata, loadSSTables, CommitLog.instance));
+            ColumnFamilyStore oldCfs = columnFamilyStores.putIfAbsent(metadata.cfId, ColumnFamilyStore.createColumnFamilyStore(this, metadata, loadSSTables, commitLog));
             // CFS mbean instantiation will error out before we hit this, but in case that changes...
             if (oldCfs != null)
                 throw new IllegalStateException("added multiple mappings for cf id " + metadata.cfId);
@@ -407,7 +409,7 @@ public class Keyspace
     }
 
     /**
-     * This method appends a row to the global CommitLog, then updates memtables and indexes.
+     * This method appends a row to the Keyspace's CommitLog, then updates memtables and indexes.
      *
      * @param mutation       the row to write.  Must not be modified after calling apply, since commitlog append
      *                       may happen concurrently, depending on the CL Executor type.
@@ -490,7 +492,7 @@ public class Keyspace
             if (writeCommitLog)
             {
                 Tracing.trace("Appending to commitlog");
-                commitLogPosition = CommitLog.instance.add(mutation);
+                commitLogPosition = commitLog.add(mutation);
             }
 
             for (PartitionUpdate upd : mutation.getPartitionUpdates())
