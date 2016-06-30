@@ -33,9 +33,14 @@ import org.apache.cassandra.io.util.FileUtils;
 
 public class DropRecreateAndRestoreTest extends CQLTester
 {
+
+    private CommitLog commitLog;
+
     @Test
     public void testCreateWithIdRestore() throws Throwable
     {
+        commitLog = CommitLog.instance;
+
         createTable("CREATE TABLE %s (a int, b int, c int, PRIMARY KEY(a, b))");
 
         execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)", 0, 0, 0);
@@ -52,7 +57,7 @@ public class DropRecreateAndRestoreTest extends CQLTester
         assertRows(execute("SELECT * FROM %s"), row(1, 0, 2), row(1, 1, 3), row(0, 0, 0), row(0, 1, 1));
 
         // Drop will flush and clean segments. Hard-link them so that they can be restored later.
-        List<String> segments = CommitLog.instance.getActiveSegmentNames();
+        List<String> segments = commitLog.getActiveSegmentNames();
         File logPath = new File(DatabaseDescriptor.getCommitLogLocation());
         for (String segment: segments)
             FileUtils.createHardLink(new File(logPath, segment), new File(logPath, segment + ".save"));
@@ -69,12 +74,12 @@ public class DropRecreateAndRestoreTest extends CQLTester
         try
         {
             // Restore to point in time.
-            CommitLog.instance.archiver.restorePointInTime = time;
-            CommitLog.instance.resetUnsafe(false);
+            commitLog.archiver.restorePointInTime = time;
+            commitLog.resetUnsafe(false);
         }
         finally
         {
-            CommitLog.instance.archiver.restorePointInTime = Long.MAX_VALUE;
+            commitLog.archiver.restorePointInTime = Long.MAX_VALUE;
         }
 
         assertRows(execute("SELECT * FROM %s"), row(0, 0, 0), row(0, 1, 1));
