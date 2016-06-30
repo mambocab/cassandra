@@ -44,6 +44,8 @@ import org.apache.cassandra.utils.KillerForTests;
  */
 public class OutOfSpaceTest extends CQLTester
 {
+    private static CommitLog commitLog = CommitLog.instance;
+
     @Test
     public void testFlushUnwriteableDie() throws Throwable
     {
@@ -56,7 +58,7 @@ public class OutOfSpaceTest extends CQLTester
         try
         {
             DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.die);
-            flushAndExpectError();
+            flushAndExpectError(commitLog);
             Assert.assertTrue(killerForTests.wasKilled());
             Assert.assertFalse(killerForTests.wasKilledQuietly()); //only killed quietly on startup failure
         }
@@ -77,7 +79,7 @@ public class OutOfSpaceTest extends CQLTester
         try
         {
             DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.stop);
-            flushAndExpectError();
+            flushAndExpectError(commitLog);
             Assert.assertFalse(Gossiper.instance.isEnabled());
         }
         finally
@@ -96,7 +98,7 @@ public class OutOfSpaceTest extends CQLTester
         try
         {
             DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.ignore);
-            flushAndExpectError();
+            flushAndExpectError(commitLog);
         }
         finally
         {
@@ -134,7 +136,7 @@ public class OutOfSpaceTest extends CQLTester
         }
     }
 
-    public void flushAndExpectError() throws InterruptedException, ExecutionException
+    public void flushAndExpectError(CommitLog clToFlush) throws InterruptedException, ExecutionException
     {
         try
         {
@@ -149,7 +151,7 @@ public class OutOfSpaceTest extends CQLTester
 
         // Make sure commit log wasn't discarded.
         UUID cfid = currentTableMetadata().cfId;
-        for (CommitLogSegment segment : CommitLog.instance.segmentManager.getActiveSegments())
+        for (CommitLogSegment segment : clToFlush.segmentManager.getActiveSegments())
             if (segment.getDirtyCFIDs().contains(cfid))
                 return;
         fail("Expected commit log to remain dirty for the affected table.");
