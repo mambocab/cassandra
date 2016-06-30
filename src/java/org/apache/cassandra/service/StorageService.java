@@ -115,7 +115,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     @Deprecated
     private final LegacyJMXProgressSupport legacyProgressSupport;
-    private final CommitLog commitLog = CommitLog.instance;
+
+    public void setCommitLog(CommitLog commitLog) {
+        this.commitLog = commitLog;
+    }
+
+    private CommitLog commitLog;
 
     private static int getRingDelay()
     {
@@ -137,7 +142,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private Thread drainOnShutdown = null;
     private volatile boolean inShutdownHook = false;
 
-    public static final StorageService instance = new StorageService();
+    public static final StorageService instance = new StorageService(null);
 
     public boolean isInShutdownHook()
     {
@@ -223,8 +228,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Gossiper.instance.addLocalApplicationStates(states);
     }
 
-    public StorageService()
+    public StorageService(CommitLog commitLog)
     {
+        this.commitLog = commitLog;
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {

@@ -37,11 +37,11 @@ public class CommitLogTestReplayer extends CommitLogReplayer
 {
     private final Predicate<Mutation> processor;
 
+
     public CommitLogTestReplayer(Predicate<Mutation> processor) throws IOException
     {
-        CommitLog commitLog = CommitLog.instance;
-        super(commitLog, CommitLogPosition.NONE, null, ReplayFilter.create());
-        commitLog.sync(true);
+        super(CommitLog.instance, CommitLogPosition.NONE, null, ReplayFilter.create());
+        CommitLog.instance.sync(true);
 
         this.processor = processor;
         commitLogReader = new CommitLogTestReader();

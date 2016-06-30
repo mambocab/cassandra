@@ -156,6 +156,7 @@ public class CassandraDaemon
     private boolean setupCompleted;
 
     private final CommitLog commitLog = CommitLog.instance;
+    //StorageService.instance.setCommitLog(commitLog);
 
     public CassandraDaemon() {
         this(false);
