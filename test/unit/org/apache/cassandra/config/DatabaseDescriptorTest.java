@@ -51,6 +51,8 @@ import static org.junit.Assert.assertTrue;
 @RunWith(OrderedJUnit4ClassRunner.class)
 public class DatabaseDescriptorTest
 {
+    private CommitLog commitLog = CommitLog.instance;
+
     @Test
     public void testCFMetaDataSerialization() throws ConfigurationException, InvalidRequestException
     {
@@ -83,7 +85,7 @@ public class DatabaseDescriptorTest
     @Test
     public void testTransKsMigration() throws ConfigurationException, IOException
     {
-        SchemaLoader.cleanupAndLeaveDirs(CommitLog.instance);
+        SchemaLoader.cleanupAndLeaveDirs(commitLog);
         Schema.instance.loadFromDisk();
         assertEquals(0, Schema.instance.getNonSystemKeyspaces().size());
 
