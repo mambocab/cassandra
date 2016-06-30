@@ -197,6 +197,8 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     @VisibleForTesting
     public static volatile ColumnFamilyStore discardFlushResults;
 
+    private static final CommitLog commitLog = CommitLog.instance;
+
     public final Keyspace keyspace;
     public final String name;
     public final CFMetaData metadata;
@@ -992,7 +994,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             // If a flush errored out but the error was ignored, make sure we don't discard the commit log.
             if (flushFailure == null)
             {
-                CommitLog.instance.discardCompletedSegments(metadata.cfId, commitLogUpperBound);
+                commitLog.discardCompletedSegments(metadata.cfId, commitLogUpperBound);
                 for (int i = 0 ; i < memtables.size() ; i++)
                 {
                     Memtable memtable = memtables.get(i);
@@ -1224,7 +1226,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         CommitLogPosition lastReplayPosition;
         while (true)
         {
-            lastReplayPosition = new Memtable.LastCommitLogPosition((CommitLog.instance.getCurrentPosition()));
+            lastReplayPosition = new Memtable.LastCommitLogPosition((commitLog.getCurrentPosition()));
             CommitLogPosition currentLast = commitLogUpperBound.get();
             if ((currentLast == null || currentLast.compareTo(lastReplayPosition) <= 0)
                 && commitLogUpperBound.compareAndSet(currentLast, lastReplayPosition))
@@ -1239,7 +1241,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public void simulateFailedFlush()
     {
         discardFlushResults = this;
-        data.markFlushing(data.switchMemtable(false, new Memtable(new AtomicReference<>(CommitLog.instance.getCurrentPosition()), this)));
+        data.markFlushing(data.switchMemtable(false, new Memtable(new AtomicReference<>(commitLog.getCurrentPosition()), this)));
     }
 
     public void resumeFlushing()
