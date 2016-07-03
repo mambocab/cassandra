@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import com.sun.tools.doclets.internal.toolkit.util.CommentedMethodFinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
