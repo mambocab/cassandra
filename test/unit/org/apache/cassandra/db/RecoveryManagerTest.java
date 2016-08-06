@@ -74,6 +74,7 @@ public class RecoveryManagerTest
 
     private static final String KEYSPACE2 = "RecoveryManagerTest2";
     private static final String CF_STANDARD3 = "Standard3";
+    private final CommitLog commitLog = CommitLog.instance;
 
     public RecoveryManagerTest(ParameterizedClass commitLogCompression, EncryptionContext encryptionContext)
     {
@@ -95,7 +96,7 @@ public class RecoveryManagerTest
     @Before
     public void setUp() throws IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
     }
 
     @BeforeClass
@@ -123,7 +124,7 @@ public class RecoveryManagerTest
     @Test
     public void testNothingToRecover() throws IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
     }
 
     @Test
@@ -136,7 +137,7 @@ public class RecoveryManagerTest
         CommitLogReplayer.mutationInitiator = mockInitiator;
         try
         {
-            CommitLog.instance.resetUnsafe(true);
+            commitLog.resetUnsafe(true);
             Keyspace keyspace1 = Keyspace.open(KEYSPACE1);
             Keyspace keyspace2 = Keyspace.open(KEYSPACE2);
 
@@ -162,7 +163,7 @@ public class RecoveryManagerTest
                 {
                     try
                     {
-                        CommitLog.instance.resetUnsafe(false); // disassociate segments from live CL
+                        commitLog.resetUnsafe(false); // disassociate segments from live CL
                     }
                     catch (Throwable t)
                     {
@@ -202,7 +203,7 @@ public class RecoveryManagerTest
     @Test
     public void testOne() throws IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
         Keyspace keyspace1 = Keyspace.open(KEYSPACE1);
         Keyspace keyspace2 = Keyspace.open(KEYSPACE2);
 
@@ -217,7 +218,7 @@ public class RecoveryManagerTest
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
         keyspace2.getColumnFamilyStore("Standard3").clearUnsafe();
 
-        CommitLog.instance.resetUnsafe(false);
+        commitLog.resetUnsafe(false);
 
         DecoratedKey dk = Util.dk("keymulti");
         Assert.assertTrue(Util.sameContent(upd1, Util.getOnlyPartitionUnfiltered(Util.cmd(keyspace1.getColumnFamilyStore(CF_STANDARD1), dk).build()).unfilteredIterator()));
@@ -227,7 +228,7 @@ public class RecoveryManagerTest
     @Test
     public void testRecoverCounter() throws IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
         Keyspace keyspace1 = Keyspace.open(KEYSPACE1);
         ColumnFamilyStore cfs = keyspace1.getColumnFamilyStore(CF_COUNTER1);
 
@@ -240,7 +241,7 @@ public class RecoveryManagerTest
 
         keyspace1.getColumnFamilyStore("Counter1").clearUnsafe();
 
-        int replayed = CommitLog.instance.resetUnsafe(false);
+        int replayed = commitLog.resetUnsafe(false);
 
         ColumnDefinition counterCol = cfs.metadata.getColumnDefinition(ByteBufferUtil.bytes("val"));
         Row row = Util.getOnlyRow(Util.cmd(cfs).includeRow("cc").columns("val").build());
@@ -250,7 +251,7 @@ public class RecoveryManagerTest
     @Test
     public void testRecoverPIT() throws Exception
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1);
         Date date = CommitLogArchiver.format.parse("2112:12:12 12:12:12");
         long timeMS = date.getTime() - 5000;
@@ -270,7 +271,7 @@ public class RecoveryManagerTest
         assertEquals(10, Util.getAll(Util.cmd(cfs).build()).size());
 
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
-        CommitLog.instance.resetUnsafe(false);
+        commitLog.resetUnsafe(false);
 
         assertEquals(6, Util.getAll(Util.cmd(cfs).build()).size());
     }
@@ -278,7 +279,7 @@ public class RecoveryManagerTest
     @Test
     public void testRecoverPITUnordered() throws Exception
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1);
         Date date = CommitLogArchiver.format.parse("2112:12:12 12:12:12");
         long timeMS = date.getTime();
@@ -305,7 +306,7 @@ public class RecoveryManagerTest
         assertEquals(10, Util.getAll(Util.cmd(cfs).build()).size());
 
         keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
-        CommitLog.instance.resetUnsafe(false);
+        commitLog.resetUnsafe(false);
 
         assertEquals(2, Util.getAll(Util.cmd(cfs).build()).size());
     }
