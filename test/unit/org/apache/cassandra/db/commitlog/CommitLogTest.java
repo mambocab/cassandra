@@ -78,6 +78,7 @@ public class CommitLogTest
 
     private static JVMStabilityInspector.Killer oldKiller;
     private static KillerForTests testKiller;
+    private final CommitLog commitLog = CommitLog.instance;
 
     public CommitLogTest(ParameterizedClass commitLogCompression, EncryptionContext encryptionContext)
     {
@@ -127,7 +128,7 @@ public class CommitLogTest
     @Before
     public void beforeTest() throws IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
     }
 
     @After
@@ -140,7 +141,7 @@ public class CommitLogTest
     public void testRecoveryWithEmptyLog() throws Exception
     {
         runExpecting(() -> {
-            CommitLog.instance.recoverFiles(tmpFile(CommitLogDescriptor.current_version));
+            commitLog.recoverFiles(tmpFile(CommitLogDescriptor.current_version));
             return null;
         }, CommitLogReplayException.class);
     }
@@ -148,7 +149,7 @@ public class CommitLogTest
     @Test
     public void testRecoveryWithEmptyLog20() throws Exception
     {
-        CommitLog.instance.recoverFiles(tmpFile(CommitLogDescriptor.VERSION_20));
+        commitLog.recoverFiles(tmpFile(CommitLogDescriptor.VERSION_20));
     }
 
     @Test
@@ -235,26 +236,26 @@ public class CommitLogTest
                      .build();
 
         // Adding it 5 times
-        CommitLog.instance.add(m);
-        CommitLog.instance.add(m);
-        CommitLog.instance.add(m);
-        CommitLog.instance.add(m);
-        CommitLog.instance.add(m);
+        commitLog.add(m);
+        commitLog.add(m);
+        commitLog.add(m);
+        commitLog.add(m);
+        commitLog.add(m);
 
         // Adding new mutation on another CF
         Mutation m2 = new RowUpdateBuilder(cfs2.metadata, 0, "k")
                       .clustering("bytes")
                       .add("val", ByteBuffer.allocate(4))
                       .build();
-        CommitLog.instance.add(m2);
+        commitLog.add(m2);
 
-        assertEquals(2, CommitLog.instance.segmentManager.getActiveSegments().size());
+        assertEquals(2, commitLog.segmentManager.getActiveSegments().size());
 
         UUID cfid2 = m2.getColumnFamilyIds().iterator().next();
-        CommitLog.instance.discardCompletedSegments(cfid2, CommitLogPosition.NONE, CommitLog.instance.getCurrentPosition());
+        commitLog.discardCompletedSegments(cfid2, CommitLogPosition.NONE, commitLog.getCurrentPosition());
 
         // Assert we still have both our segments
-        assertEquals(2, CommitLog.instance.segmentManager.getActiveSegments().size());
+        assertEquals(2, commitLog.segmentManager.getActiveSegments().size());
     }
 
     @Test
@@ -271,38 +272,38 @@ public class CommitLogTest
                   .build();
 
         // Adding it twice (won't change segment)
-        CommitLog.instance.add(rm);
-        CommitLog.instance.add(rm);
+        commitLog.add(rm);
+        commitLog.add(rm);
 
-        assertEquals(1, CommitLog.instance.segmentManager.getActiveSegments().size());
+        assertEquals(1, commitLog.segmentManager.getActiveSegments().size());
 
         // "Flush": this won't delete anything
         UUID cfid1 = rm.getColumnFamilyIds().iterator().next();
-        CommitLog.instance.sync();
-        CommitLog.instance.discardCompletedSegments(cfid1, CommitLogPosition.NONE, CommitLog.instance.getCurrentPosition());
+        commitLog.sync();
+        commitLog.discardCompletedSegments(cfid1, CommitLogPosition.NONE, commitLog.getCurrentPosition());
 
-        assertEquals(1, CommitLog.instance.segmentManager.getActiveSegments().size());
+        assertEquals(1, commitLog.segmentManager.getActiveSegments().size());
 
         // Adding new mutation on another CF, large enough (including CL entry overhead) that a new segment is created
         Mutation rm2 = new RowUpdateBuilder(cfs2.metadata, 0, "k")
                        .clustering("bytes")
                        .add("val", ByteBuffer.allocate(DatabaseDescriptor.getMaxMutationSize() - 200))
                        .build();
-        CommitLog.instance.add(rm2);
+        commitLog.add(rm2);
         // also forces a new segment, since each entry-with-overhead is just under half the CL size
-        CommitLog.instance.add(rm2);
-        CommitLog.instance.add(rm2);
+        commitLog.add(rm2);
+        commitLog.add(rm2);
 
-        assertEquals(3, CommitLog.instance.segmentManager.getActiveSegments().size());
+        assertEquals(3, commitLog.segmentManager.getActiveSegments().size());
 
         // "Flush" second cf: The first segment should be deleted since we
         // didn't write anything on cf1 since last flush (and we flush cf2)
 
         UUID cfid2 = rm2.getColumnFamilyIds().iterator().next();
-        CommitLog.instance.discardCompletedSegments(cfid2, CommitLogPosition.NONE, CommitLog.instance.getCurrentPosition());
+        commitLog.discardCompletedSegments(cfid2, CommitLogPosition.NONE, commitLog.getCurrentPosition());
 
         // Assert we still have both our segment
-        assertEquals(1, CommitLog.instance.segmentManager.getActiveSegments().size());
+        assertEquals(1, commitLog.segmentManager.getActiveSegments().size());
     }
 
     private static int getMaxRecordDataSize(String keyspace, ByteBuffer key, String cfName, String colName)
@@ -343,7 +344,7 @@ public class CommitLogTest
                       .clustering("bytes")
                       .add("val", ByteBuffer.allocate(getMaxRecordDataSize()))
                       .build();
-        CommitLog.instance.add(rm);
+        commitLog.add(rm);
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -355,7 +356,7 @@ public class CommitLogTest
                       .clustering("bytes")
                       .add("val", ByteBuffer.allocate(1 + getMaxRecordDataSize()))
                       .build();
-        CommitLog.instance.add(rm);
+        commitLog.add(rm);
         throw new AssertionError("mutation larger than limit was accepted");
     }
 
@@ -432,7 +433,7 @@ public class CommitLogTest
         {
             lout.write(logData);
             //statics make it annoying to test things correctly
-            CommitLog.instance.recover(logFile.getPath()); //CASSANDRA-1119 / CASSANDRA-1179 throw on failure*/
+            commitLog.recover(logFile.getPath()); //CASSANDRA-1119 / CASSANDRA-1179 throw on failure*/
         }
         return null;
     }
@@ -450,7 +451,7 @@ public class CommitLogTest
             lout.write(buf.array(), 0, buf.position());
             lout.write(logData);
             //statics make it annoying to test things correctly
-            CommitLog.instance.recover(logFile.getPath()); //CASSANDRA-1119 / CASSANDRA-1179 throw on failure*/
+            commitLog.recover(logFile.getPath()); //CASSANDRA-1119 / CASSANDRA-1179 throw on failure*/
         }
         return null;
     }
@@ -467,7 +468,7 @@ public class CommitLogTest
             lout.write(buf.array(), 0, buf.position());
 
             runExpecting(() -> {
-                CommitLog.instance.recover(logFile.getPath()); //CASSANDRA-1119 / CASSANDRA-1179 throw on failure*/
+                commitLog.recover(logFile.getPath()); //CASSANDRA-1119 / CASSANDRA-1179 throw on failure*/
                 return null;
             }, CommitLogReplayException.class);
         }
@@ -531,15 +532,15 @@ public class CommitLogTest
                           .build();
 
             for (int i = 0 ; i < 5 ; i++)
-                CommitLog.instance.add(m2);
+                commitLog.add(m2);
 
-            assertEquals(2, CommitLog.instance.segmentManager.getActiveSegments().size());
-            CommitLogPosition position = CommitLog.instance.getCurrentPosition();
+            assertEquals(2, commitLog.segmentManager.getActiveSegments().size());
+            CommitLogPosition position = commitLog.getCurrentPosition();
             for (Keyspace keyspace : Keyspace.system())
                 for (ColumnFamilyStore syscfs : keyspace.getColumnFamilyStores())
-                    CommitLog.instance.discardCompletedSegments(syscfs.metadata.cfId, CommitLogPosition.NONE, position);
-            CommitLog.instance.discardCompletedSegments(cfs2.metadata.cfId, CommitLogPosition.NONE, position);
-            assertEquals(1, CommitLog.instance.segmentManager.getActiveSegments().size());
+                    commitLog.discardCompletedSegments(syscfs.metadata.cfId, CommitLogPosition.NONE, position);
+            commitLog.discardCompletedSegments(cfs2.metadata.cfId, CommitLogPosition.NONE, position);
+            assertEquals(1, commitLog.segmentManager.getActiveSegments().size());
         }
         finally
         {
@@ -586,22 +587,22 @@ public class CommitLogTest
                              .add("val", bytes("this is a string"))
                              .build();
         cellCount += 1;
-        CommitLog.instance.add(rm1);
+        commitLog.add(rm1);
 
         final Mutation rm2 = new RowUpdateBuilder(cfs.metadata, 0, "k2")
                              .clustering("bytes")
                              .add("val", bytes("this is a string"))
                              .build();
         cellCount += 1;
-        CommitLog.instance.add(rm2);
+        commitLog.add(rm2);
 
-        CommitLog.instance.sync();
+        commitLog.sync();
 
-        SimpleCountingReplayer replayer = new SimpleCountingReplayer(CommitLog.instance, CommitLogPosition.NONE, cfs.metadata);
-        List<String> activeSegments = CommitLog.instance.getActiveSegmentNames();
+        SimpleCountingReplayer replayer = new SimpleCountingReplayer(commitLog, CommitLogPosition.NONE, cfs.metadata);
+        List<String> activeSegments = commitLog.getActiveSegmentNames();
         Assert.assertFalse(activeSegments.isEmpty());
 
-        File[] files = new File(CommitLog.instance.segmentManager.storageDirectory).listFiles((file, name) -> activeSegments.contains(name));
+        File[] files = new File(commitLog.segmentManager.storageDirectory).listFiles((file, name) -> activeSegments.contains(name));
         replayer.replayFiles(files);
 
         assertEquals(cellCount, replayer.cells);
@@ -622,7 +623,7 @@ public class CommitLogTest
                                  .clustering("bytes")
                                  .add("val", bytes("this is a string"))
                                  .build();
-            CommitLogPosition position = CommitLog.instance.add(rm1);
+            CommitLogPosition position = commitLog.add(rm1);
 
             if (i == discardPosition)
                 commitLogPosition = position;
@@ -632,13 +633,13 @@ public class CommitLogTest
             }
         }
 
-        CommitLog.instance.sync();
+        commitLog.sync();
 
-        SimpleCountingReplayer replayer = new SimpleCountingReplayer(CommitLog.instance, commitLogPosition, cfs.metadata);
-        List<String> activeSegments = CommitLog.instance.getActiveSegmentNames();
+        SimpleCountingReplayer replayer = new SimpleCountingReplayer(commitLog, commitLogPosition, cfs.metadata);
+        List<String> activeSegments = commitLog.getActiveSegmentNames();
         Assert.assertFalse(activeSegments.isEmpty());
 
-        File[] files = new File(CommitLog.instance.segmentManager.storageDirectory).listFiles((file, name) -> activeSegments.contains(name));
+        File[] files = new File(commitLog.segmentManager.storageDirectory).listFiles((file, name) -> activeSegments.contains(name));
         replayer.replayFiles(files);
 
         assertEquals(cellCount, replayer.cells);
@@ -687,7 +688,7 @@ public class CommitLogTest
 
     public void testUnwriteableFlushRecovery() throws ExecutionException, InterruptedException, IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
 
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(STANDARD1);
 
@@ -725,17 +726,17 @@ public class CommitLogTest
             DatabaseDescriptor.setDiskFailurePolicy(oldPolicy);
         }
 
-        CommitLog.instance.sync();
+        commitLog.sync();
         System.setProperty("cassandra.replayList", KEYSPACE1 + "." + STANDARD1);
         // Currently we don't attempt to re-flush a memtable that failed, thus make sure data is replayed by commitlog.
         // If retries work subsequent flushes should clear up error and this should change to expect 0.
-        Assert.assertEquals(1, CommitLog.instance.resetUnsafe(false));
+        Assert.assertEquals(1, commitLog.resetUnsafe(false));
     }
 
     public void testOutOfOrderFlushRecovery(BiConsumer<ColumnFamilyStore, Memtable> flushAction, boolean performCompaction)
             throws ExecutionException, InterruptedException, IOException
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
 
         ColumnFamilyStore cfs = Keyspace.open(KEYSPACE1).getColumnFamilyStore(STANDARD1);
 
@@ -758,12 +759,12 @@ public class CommitLogTest
         for (SSTableReader reader : cfs.getLiveSSTables())
             reader.reloadSSTableMetadata();
 
-        CommitLog.instance.sync();
+        commitLog.sync();
         System.setProperty("cassandra.replayList", KEYSPACE1 + "." + STANDARD1);
         // In the absence of error, this should be 0 because forceBlockingFlush/forceRecycleAllSegments would have
         // persisted all data in the commit log. Because we know there was an error, there must be something left to
         // replay.
-        Assert.assertEquals(1, CommitLog.instance.resetUnsafe(false));
+        Assert.assertEquals(1, commitLog.resetUnsafe(false));
     }
 
     BiConsumer<ColumnFamilyStore, Memtable> flush = (cfs, current) ->
@@ -787,7 +788,7 @@ public class CommitLogTest
         // Move to new commit log segment and try to flush all data. Also delete segments that no longer contain
         // flushed data.
         // This does not stop on errors and should retain segments for which flushing failed.
-        CommitLog.instance.forceRecycleAllSegments();
+        commitLog.forceRecycleAllSegments();
 
         // Wait for started flushes to complete.
         cfs.switchMemtableIfCurrent(current);
