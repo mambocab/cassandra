@@ -60,6 +60,8 @@ public class CommitLogSegmentManagerTest
     private static final String STANDARD2 = "Standard2";
 
     private final static byte[] entropy = new byte[1024 * 256];
+    private final CommitLog commitLog = CommitLog.instance;
+
     @BeforeClass
     public static void defineSchema() throws ConfigurationException
     {
@@ -86,7 +88,7 @@ public class CommitLogSegmentManagerTest
             action = "org.apache.cassandra.db.commitlog.CommitLogSegmentManagerTest.allowSync.acquire()")
     public void testCompressedCommitLogBackpressure() throws Throwable
     {
-        CommitLog.instance.resetUnsafe(true);
+        commitLog.resetUnsafe(true);
         ColumnFamilyStore cfs1 = Keyspace.open(KEYSPACE1).getColumnFamilyStore(STANDARD1);
 
         final Mutation m = new RowUpdateBuilder(cfs1.metadata, 0, "k")
@@ -97,11 +99,11 @@ public class CommitLogSegmentManagerTest
         Thread dummyThread = new Thread( () ->
         {
             for (int i = 0; i < 20; i++)
-                CommitLog.instance.add(m);
+                commitLog.add(m);
         });
         dummyThread.start();
 
-        AbstractCommitLogSegmentManager clsm = CommitLog.instance.segmentManager;
+        AbstractCommitLogSegmentManager clsm = commitLog.segmentManager;
 
         // Protect against delay, but still break out as fast as possible
         long start = System.currentTimeMillis();
