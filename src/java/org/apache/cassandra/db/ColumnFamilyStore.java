@@ -86,6 +86,7 @@ import static org.apache.cassandra.utils.Throwables.maybeFail;
 
 public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 {
+    private static final CommitLog commitLog = CommitLog.instance;
     // The directories which will be searched for sstables on cfs instantiation.
     private static volatile Directories.DataDirectory[] initialDirectories = Directories.dataDirectories;
 
@@ -1012,7 +1013,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
             {
                 Memtable memtable = memtables.get(0);
                 commitLogUpperBound = memtable.getCommitLogUpperBound();
-                CommitLog.instance.discardCompletedSegments(metadata.cfId, memtable.getCommitLogLowerBound(), commitLogUpperBound);
+                commitLog.discardCompletedSegments(metadata.cfId, memtable.getCommitLogLowerBound(), commitLogUpperBound);
             }
 
             metric.pendingFlushes.dec();
@@ -1234,7 +1235,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         CommitLogPosition lastReplayPosition;
         while (true)
         {
-            lastReplayPosition = new Memtable.LastCommitLogPosition((CommitLog.instance.getCurrentPosition()));
+            lastReplayPosition = new Memtable.LastCommitLogPosition((commitLog.getCurrentPosition()));
             CommitLogPosition currentLast = commitLogUpperBound.get();
             if ((currentLast == null || currentLast.compareTo(lastReplayPosition) <= 0)
                 && commitLogUpperBound.compareAndSet(currentLast, lastReplayPosition))
