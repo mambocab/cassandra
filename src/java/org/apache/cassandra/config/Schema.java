@@ -78,12 +78,12 @@ public class Schema
 
     /* metadata map for faster ColumnFamily lookup */
     private final ConcurrentBiMap<Pair<String, String>, UUID> cfIdMap = new ConcurrentBiMap<>();
+    private final CommitLog commitLog = CommitLog.instance;
 
     private volatile UUID version;
 
     // 59adb24e-f3cd-3e02-97f0-5b395827453f
     public static final UUID emptyVersion;
-
 
     static
     {
@@ -639,7 +639,7 @@ public class Schema
         Keyspace.writeOrder.awaitNewBarrier();
 
         // force a new segment in the CL
-        CommitLog.instance.forceRecycleAllSegments(droppedCfs);
+        commitLog.forceRecycleAllSegments(droppedCfs);
 
         MigrationManager.instance.notifyDropKeyspace(ksm);
     }
@@ -694,7 +694,7 @@ public class Schema
         Keyspace.open(ksName).dropCf(cfm.cfId);
         MigrationManager.instance.notifyDropColumnFamily(cfm);
 
-        CommitLog.instance.forceRecycleAllSegments(Collections.singleton(cfm.cfId));
+        commitLog.forceRecycleAllSegments(Collections.singleton(cfm.cfId));
     }
 
     public void addView(ViewDefinition view)
@@ -750,7 +750,7 @@ public class Schema
         Keyspace.open(ksName).viewManager.reload();
         MigrationManager.instance.notifyDropView(view);
 
-        CommitLog.instance.forceRecycleAllSegments(Collections.singleton(view.metadata.cfId));
+        commitLog.forceRecycleAllSegments(Collections.singleton(view.metadata.cfId));
     }
 
     public void addType(UserType ut)
