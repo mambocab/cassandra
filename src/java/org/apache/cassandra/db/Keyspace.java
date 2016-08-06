@@ -63,6 +63,7 @@ public class Keyspace
     private static final boolean TEST_FAIL_WRITES = !TEST_FAIL_WRITES_KS.isEmpty();
 
     public final KeyspaceMetrics metric;
+    private final CommitLog commitLog = CommitLog.instance;
 
     // It is possible to call Keyspace.open without a running daemon, so it makes sense to ensure
     // proper directories here as well as in CassandraDaemon.
@@ -519,7 +520,7 @@ public class Keyspace
             if (writeCommitLog)
             {
                 Tracing.trace("Appending to commitlog");
-                commitLogPosition = CommitLog.instance.add(mutation);
+                commitLogPosition = commitLog.add(mutation);
             }
 
             for (PartitionUpdate upd : mutation.getPartitionUpdates())
