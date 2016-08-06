@@ -116,6 +116,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     @Deprecated
     private final LegacyJMXProgressSupport legacyProgressSupport;
+    private final CommitLog commitLog = CommitLog.instance;
 
     private static int getRingDelay()
     {
@@ -618,7 +619,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     logger.warn("Caught exception while waiting for memtable flushes during shutdown hook", t);
                 }
 
-                CommitLog.instance.shutdownBlocking();
+                commitLog.shutdownBlocking();
 
                 if (FBUtilities.isWindows)
                     WindowsTimer.endTimerPeriod(DatabaseDescriptor.getWindowsTimerInterval());
@@ -4271,11 +4272,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         // whilst we've flushed all the CFs, which will have recycled all completed segments, we want to ensure
         // there are no segments to replay, so we force the recycling of any remaining (should be at most one)
-        CommitLog.instance.forceRecycleAllSegments();
+        commitLog.forceRecycleAllSegments();
 
         ColumnFamilyStore.shutdownPostFlushExecutor();
 
-        CommitLog.instance.shutdownBlocking();
+        commitLog.shutdownBlocking();
 
         // wait for miscellaneous tasks like sstable and commitlog segment deletion
         ScheduledExecutors.nonPeriodicTasks.shutdown();
