@@ -82,6 +82,7 @@ public abstract class CQLTester
     protected static final long ROW_CACHE_SIZE_IN_MB = Integer.valueOf(System.getProperty("cassandra.test.row_cache_size_in_mb", "0"));
     private static final AtomicInteger seqNumber = new AtomicInteger();
     protected static final ByteBuffer TOO_BIG = ByteBuffer.allocate(FBUtilities.MAX_UNSIGNED_SHORT + 1024);
+    private static final CommitLog commitLog = CommitLog.instance;
 
     private static org.apache.cassandra.transport.Server server;
     protected static final int nativePort;
@@ -92,6 +93,7 @@ public abstract class CQLTester
     private static boolean isServerPrepared = false;
 
     public static final List<Integer> PROTOCOL_VERSIONS;
+
     static
     {
         // The latest versions might not be supported yet by the java driver
@@ -177,11 +179,11 @@ public abstract class CQLTester
     public static void cleanupAndLeaveDirs() throws IOException
     {
         // We need to stop and unmap all CLS instances prior to cleanup() or we'll get failures on Windows.
-        CommitLog.instance.stopUnsafe(true);
+        commitLog.stopUnsafe(true);
         mkdirs();
         cleanup();
         mkdirs();
-        CommitLog.instance.restartUnsafe();
+        commitLog.restartUnsafe();
     }
 
     public static void cleanup()
