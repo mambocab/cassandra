@@ -45,6 +45,9 @@ import org.apache.cassandra.utils.FBUtilities;
 
 public class SchemaLoader
 {
+
+    private static CommitLog commitLog = CommitLog.instance;
+
     @BeforeClass
     public static void loadSchema() throws ConfigurationException
     {
@@ -701,11 +704,11 @@ public class SchemaLoader
     public static void cleanupAndLeaveDirs() throws IOException
     {
         // We need to stop and unmap all CLS instances prior to cleanup() or we'll get failures on Windows.
-        CommitLog.instance.stopUnsafe(true);
+        commitLog.stopUnsafe(true);
         mkdirs();
         cleanup();
         mkdirs();
-        CommitLog.instance.restartUnsafe();
+        commitLog.restartUnsafe();
     }
 
     public static void cleanup()
