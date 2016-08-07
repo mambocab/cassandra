@@ -67,6 +67,7 @@ public class Tracker
     public final ColumnFamilyStore cfstore;
     final AtomicReference<View> view;
     public final boolean loadsstables;
+    private final CommitLog commitLog = CommitLog.instance;
 
     public Tracker(ColumnFamilyStore cfstore, boolean loadsstables)
     {
@@ -196,7 +197,7 @@ public class Tracker
     public void reset()
     {
         view.set(new View(
-                         !isDummy() ? ImmutableList.of(new Memtable(new AtomicReference<>(CommitLog.instance.getCurrentPosition()), cfstore))
+                         !isDummy() ? ImmutableList.of(new Memtable(new AtomicReference<>(commitLog.getCurrentPosition()), cfstore))
                                     : ImmutableList.<Memtable>of(),
                          ImmutableList.<Memtable>of(),
                          Collections.<SSTableReader, SSTableReader>emptyMap(),
