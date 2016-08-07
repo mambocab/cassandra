@@ -51,6 +51,8 @@ import static java.util.Collections.singleton;
 public class TrackerTest
 {
 
+    private final CommitLog commitLog = CommitLog.instance;
+
     private static final class MockListener implements INotificationConsumer
     {
         final boolean throwException;
@@ -266,15 +268,15 @@ public class TrackerTest
         Tracker tracker = cfs.getTracker();
         tracker.subscribe(listener);
 
-        Memtable prev1 = tracker.switchMemtable(true, new Memtable(new AtomicReference<>(CommitLog.instance.getCurrentPosition()), cfs));
+        Memtable prev1 = tracker.switchMemtable(true, new Memtable(new AtomicReference<>(commitLog.getCurrentPosition()), cfs));
         OpOrder.Group write1 = cfs.keyspace.writeOrder.getCurrent();
         OpOrder.Barrier barrier1 = cfs.keyspace.writeOrder.newBarrier();
-        prev1.setDiscarding(barrier1, new AtomicReference<>(CommitLog.instance.getCurrentPosition()));
+        prev1.setDiscarding(barrier1, new AtomicReference<>(commitLog.getCurrentPosition()));
         barrier1.issue();
-        Memtable prev2 = tracker.switchMemtable(false, new Memtable(new AtomicReference<>(CommitLog.instance.getCurrentPosition()), cfs));
+        Memtable prev2 = tracker.switchMemtable(false, new Memtable(new AtomicReference<>(commitLog.getCurrentPosition()), cfs));
         OpOrder.Group write2 = cfs.keyspace.writeOrder.getCurrent();
         OpOrder.Barrier barrier2 = cfs.keyspace.writeOrder.newBarrier();
-        prev2.setDiscarding(barrier2, new AtomicReference<>(CommitLog.instance.getCurrentPosition()));
+        prev2.setDiscarding(barrier2, new AtomicReference<>(commitLog.getCurrentPosition()));
         barrier2.issue();
         Memtable cur = tracker.getView().getCurrentMemtable();
         OpOrder.Group writecur = cfs.keyspace.writeOrder.getCurrent();
@@ -313,7 +315,7 @@ public class TrackerTest
         tracker = cfs.getTracker();
         listener = new MockListener(false);
         tracker.subscribe(listener);
-        prev1 = tracker.switchMemtable(false, new Memtable(new AtomicReference<>(CommitLog.instance.getCurrentPosition()), cfs));
+        prev1 = tracker.switchMemtable(false, new Memtable(new AtomicReference<>(commitLog.getCurrentPosition()), cfs));
         tracker.markFlushing(prev1);
         reader = MockSchema.sstable(0, 10, true, cfs);
         cfs.invalidate(false);

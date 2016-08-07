@@ -42,6 +42,7 @@ import org.apache.cassandra.utils.NoSpamLogger;
 public class CommitLogSegmentManagerCDC extends AbstractCommitLogSegmentManager
 {
     static final Logger logger = LoggerFactory.getLogger(CommitLogSegmentManagerCDC.class);
+    private static final CommitLog commitLog = CommitLog.instance;
     private final CDCSizeTracker cdcSizeTracker;
 
     public CommitLogSegmentManagerCDC(final CommitLog commitLog, String storageDirectory)
@@ -267,7 +268,7 @@ public class CommitLogSegmentManagerCDC extends AbstractCommitLogSegmentManager
             }
             catch (IOException ie)
             {
-                CommitLog.instance.handleCommitError("Failed CDC Size Calculation", ie);
+                commitLog.handleCommitError("Failed CDC Size Calculation", ie);
             }
         }
 

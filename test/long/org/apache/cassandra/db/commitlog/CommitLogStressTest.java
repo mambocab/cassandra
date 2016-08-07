@@ -53,6 +53,7 @@ import org.apache.cassandra.security.EncryptionContextGenerator;
 
 public class CommitLogStressTest
 {
+    private static final CommitLog commitLog = CommitLog.instance;
     public static ByteBuffer dataSource;
 
     public static int NUM_THREADS = 4 * Runtime.getRuntime().availableProcessors() - 1;
@@ -139,7 +140,7 @@ public class CommitLogStressTest
         SchemaLoader.loadSchema();
         SchemaLoader.schemaDefinition(""); // leave def. blank to maintain old behaviour
 
-        CommitLog.instance.stopUnsafe(true);
+        commitLog.stopUnsafe(true);
     }
 
     @Before
