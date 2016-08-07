@@ -85,7 +85,7 @@ public class CassandraDaemon
     public static final String MBEAN_NAME = "org.apache.cassandra.db:type=NativeAccess";
 
     private static final Logger logger;
-    private final CommitLog commitLog = CommitLog.instance;
+    private final CassandraDataStore dataStore = CassandraDataStore.instance;
 
     static {
         // Need to register metrics before instrumented appender is created(first access to LoggerFactory).
@@ -323,7 +323,7 @@ public class CassandraDaemon
         // Replay any CommitLogSegments found on disk
         try
         {
-            commitLog.recoverSegmentsOnDisk();
+            dataStore.commitLog.recoverSegmentsOnDisk();
         }
         catch (IOException e)
         {
