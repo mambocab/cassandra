@@ -56,6 +56,7 @@ public class CommitLogUpgradeTestMaker
     public static int cellSize = 256;
     public static int rateLimit = 0;
     public static int runTimeMs = 1000;
+    CommitLog commitLog = CommitLog.instance;
 
     public static void main(String[] args) throws Exception
     {
@@ -99,7 +100,6 @@ public class CommitLogUpgradeTestMaker
 
     public void makeLog() throws IOException, InterruptedException
     {
-        CommitLog commitLog = CommitLog.instance;
         System.out.format("\nUsing commit log size: %dmb, compressor: %s, encryption: %s, sync: %s, %s\n",
                           mb(DatabaseDescriptor.getCommitLogSegmentSize()),
                           commitLog.configuration.getCompressorName(),
